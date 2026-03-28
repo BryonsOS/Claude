@@ -36,7 +36,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          GITHUB_PAGES: true
+          VITE_BASE_PATH: /Claude/
 
       - name: Configure Pages
         uses: actions/configure-pages@v4
