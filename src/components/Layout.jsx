@@ -1,14 +1,20 @@
 import { useApp } from '../context/AppContext';
 
 const NAV_ITEMS = [
-  { id: 'home', label: 'Home', emoji: '🏠' },
-  { id: 'chores', label: 'Chores', emoji: '✅' },
+  { id: 'home',    label: 'Home',    emoji: '🏠' },
+  { id: 'chores',  label: 'Chores',  emoji: '✅' },
   { id: 'rewards', label: 'Rewards', emoji: '🎁' },
-  { id: 'feed', label: 'Feed', emoji: '📢' },
+  { id: 'feed',    label: 'Feed',    emoji: '📢' },
+  { id: 'family',  label: 'Family',  emoji: '👨‍👩‍👧' },
 ];
 
 export default function Layout({ activeTab, setActiveTab, children }) {
-  const { currentUser, setCurrentUserId } = useApp();
+  const { currentUser, setCurrentUserId, chores, rewardClaims } = useApp();
+
+  const pendingApprovals = chores.filter(c => c.status === 'completed').length;
+  const pendingRewards = rewardClaims.filter(c => c.status === 'pending').length;
+  const totalBadge = pendingApprovals + pendingRewards;
+  const isParent = currentUser.role === 'parent';
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f8f7ff' }}>
@@ -23,21 +29,14 @@ export default function Layout({ activeTab, setActiveTab, children }) {
         </div>
         <button
           onClick={() => setCurrentUserId(null)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
-          style={{ backgroundColor: currentUser.bgColor, color: currentUser.color }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
+          style={{ backgroundColor: currentUser.bg, color: currentUser.color }}
         >
           <span>{currentUser.emoji}</span>
           <span>{currentUser.name}</span>
-          {currentUser.role === 'child' && (
-            <span className="bg-white bg-opacity-70 rounded-full px-1.5 py-0.5 text-xs font-bold">
-              {currentUser.points} ✨
-            </span>
-          )}
-          {currentUser.role === 'parent' && (
-            <span className="bg-white bg-opacity-70 rounded-full px-1.5 py-0.5 text-xs font-bold">
-              Parent
-            </span>
-          )}
+          <span className="bg-white bg-opacity-70 rounded-full px-1.5 py-0.5 text-xs font-bold">
+            {currentUser.role === 'child' ? `${currentUser.points} ✨` : 'Parent'}
+          </span>
         </button>
       </header>
 
@@ -52,25 +51,34 @@ export default function Layout({ activeTab, setActiveTab, children }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-lg mx-auto flex">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className="flex-1 flex flex-col items-center py-3 px-1 transition-all"
-            >
-              <span className={`text-xl mb-0.5 transition-transform ${activeTab === item.id ? 'scale-110' : ''}`}>
-                {item.emoji}
-              </span>
-              <span className={`text-xs font-medium transition-colors ${
-                activeTab === item.id ? 'text-indigo-600' : 'text-gray-400'
-              }`}>
-                {item.label}
-              </span>
-              {activeTab === item.id && (
-                <div className="absolute bottom-0 w-10 h-0.5 bg-indigo-500 rounded-full" />
-              )}
-            </button>
-          ))}
+          {NAV_ITEMS.map(item => {
+            const isActive = activeTab === item.id;
+            const showBadge = isParent && item.id === 'chores' && totalBadge > 0;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="flex-1 flex flex-col items-center py-2 px-1 relative"
+              >
+                <div className="relative">
+                  <span className={`text-xl transition-transform block ${isActive ? 'scale-110' : ''}`}>
+                    {item.emoji}
+                  </span>
+                  {showBadge && (
+                    <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                      {totalBadge}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-xs font-medium mt-0.5 ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
+                  {item.label}
+                </span>
+                {isActive && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-500 rounded-full" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
