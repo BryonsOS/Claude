@@ -6,13 +6,19 @@ import ChoresScreen from './screens/ChoresScreen';
 import RewardsScreen from './screens/RewardsScreen';
 import FeedScreen from './screens/FeedScreen';
 import Layout from './components/Layout';
+import InstallPrompt from './components/InstallPrompt';
 
 function AppContent() {
   const { currentUser } = useApp();
   const [activeTab, setActiveTab] = useState('home');
 
   if (!currentUser) {
-    return <LoginScreen />;
+    return (
+      <>
+        <LoginScreen />
+        <InstallPrompt />
+      </>
+    );
   }
 
   const screens = {
@@ -23,9 +29,12 @@ function AppContent() {
   };
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {screens[activeTab] || screens.home}
-    </Layout>
+    <>
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        {screens[activeTab] || screens.home}
+      </Layout>
+      <InstallPrompt />
+    </>
   );
 }
 

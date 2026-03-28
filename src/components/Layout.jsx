@@ -13,7 +13,10 @@ export default function Layout({ activeTab, setActiveTab, children }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f8f7ff' }}>
       {/* Top Bar */}
-      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+      <header
+        className="bg-white border-b border-gray-100 px-4 flex items-center justify-between sticky top-0 z-20 shadow-sm"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)', paddingBottom: '0.75rem' }}
+      >
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏠</span>
           <span className="font-bold text-gray-800 text-lg">ChoreFamily</span>
@@ -44,7 +47,10 @@ export default function Layout({ activeTab, setActiveTab, children }) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-20">
+      <nav
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-20"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         <div className="max-w-lg mx-auto flex">
           {NAV_ITEMS.map(item => (
             <button
