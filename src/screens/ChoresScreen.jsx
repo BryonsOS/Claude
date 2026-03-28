@@ -166,14 +166,14 @@ function ChoreCard({ chore, onClick }) {
         {!isParent && isMyChore && chore.status === 'pending' && (
           <button
             onClick={() => completeChore(chore.id)}
-            className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
             style={{ backgroundColor: currentUser.color }}
           >
             Mark Complete ✓
           </button>
         )}
         {!isParent && isMyChore && chore.status === 'completed' && (
-          <div className="flex-1 py-2 rounded-xl text-xs font-medium text-amber-600 text-center bg-amber-50">
+          <div className="flex-1 py-3 rounded-xl text-sm font-medium text-amber-600 text-center bg-amber-50">
             ⏳ Waiting for parent approval
           </div>
         )}
@@ -181,13 +181,13 @@ function ChoreCard({ chore, onClick }) {
           <>
             <button
               onClick={() => approveChore(chore.id)}
-              className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-green-500"
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-green-500"
             >
               Approve ✓
             </button>
             <button
               onClick={() => {}} // opens detail for rejection reason
-              className="px-4 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50"
+              className="px-4 py-3 rounded-xl text-sm font-bold text-red-500 bg-red-50"
             >
               Reject
             </button>

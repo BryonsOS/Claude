@@ -11,8 +11,18 @@ import Layout from './components/Layout';
 import InstallPrompt from './components/InstallPrompt';
 
 function AppContent() {
-  const { isSetup, currentUser } = useApp();
+  const { isSetup, isLoading, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState('home');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4"
+        style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div className="text-6xl">🏠</div>
+        <p className="text-white font-semibold text-lg">Loading ChoreFamily…</p>
+      </div>
+    );
+  }
 
   if (!isSetup) {
     return <OnboardingScreen />;

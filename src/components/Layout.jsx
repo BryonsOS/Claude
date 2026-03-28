@@ -58,10 +58,10 @@ export default function Layout({ activeTab, setActiveTab, children }) {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className="flex-1 flex flex-col items-center py-2 px-1 relative"
+                className="flex-1 flex flex-col items-center py-3 px-1 relative"
               >
                 <div className="relative">
-                  <span className={`text-xl transition-transform block ${isActive ? 'scale-110' : ''}`}>
+                  <span className={`text-2xl transition-transform block ${isActive ? 'scale-110' : ''}`}>
                     {item.emoji}
                   </span>
                   {showBadge && (

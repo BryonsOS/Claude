@@ -12,16 +12,39 @@ export default function FamilyScreen() {
 // ─── Parent view ──────────────────────────────────────────────────────────────
 
 function ParentFamilyView() {
-  const { members, chores } = useApp();
+  const { members, chores, familyCode } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [showReset, setShowReset] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const parents = members.filter(m => m.role === 'parent');
   const kids = members.filter(m => m.role === 'child');
 
+  const copyCode = () => {
+    navigator.clipboard?.writeText(familyCode).catch(() => {});
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
+
   return (
     <div className="max-w-lg mx-auto px-4 pb-6 pt-4 space-y-5">
+      {/* Family Code */}
+      {familyCode && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+          <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-1">Family Code</p>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-3xl font-bold text-indigo-700 tracking-widest">{familyCode}</span>
+            <button onClick={copyCode}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-indigo-500 flex-shrink-0">
+              {codeCopied ? 'Copied! ✓' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-xs text-indigo-400 mt-2">
+            Share this code with family members so they can join on their device.
+          </p>
+        </div>
+      )}
       {/* Parents */}
       <section>
         <div className="flex items-center justify-between mb-3">

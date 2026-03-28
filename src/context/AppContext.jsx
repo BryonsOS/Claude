@@ -1,9 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { db } from '../firebase';
+import { doc, onSnapshot, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 
 const AppContext = createContext(null);
-const STORAGE_KEY = 'chorefamily_v1';
+const CODE_KEY = 'chorefamily_code';
 
-const PRESET_COLORS = [
+export const PRESET_COLORS = [
   { color: '#6366f1', bg: '#eef2ff' },
   { color: '#ec4899', bg: '#fdf2f8' },
   { color: '#10b981', bg: '#ecfdf5' },
@@ -16,52 +18,83 @@ const PRESET_COLORS = [
 
 const STARTER_REWARDS = [
   { title: 'Extra Screen Time', pointCost: 50, emoji: '🎮', description: '1 extra hour of games or TV.' },
-  { title: 'Choose Dinner', pointCost: 75, emoji: '🍕', description: 'Pick what the family has for dinner.' },
-  { title: 'Movie Night Pick', pointCost: 60, emoji: '🎬', description: 'Pick the movie for family movie night.' },
-  { title: 'Stay Up Late', pointCost: 80, emoji: '🌙', description: 'One night 1 hour past bedtime.' },
-  { title: 'No Chores Day', pointCost: 150, emoji: '🏖️', description: 'One full day off from all chores.' },
+  { title: 'Choose Dinner',     pointCost: 75, emoji: '🍕', description: 'Pick what the family has for dinner.' },
+  { title: 'Movie Night Pick',  pointCost: 60, emoji: '🎬', description: 'Pick the movie for family movie night.' },
+  { title: 'Stay Up Late',      pointCost: 80, emoji: '🌙', description: 'One night 1 hour past bedtime.' },
+  { title: 'No Chores Day',     pointCost: 150,emoji: '🏖️', description: 'One full day off from all chores.' },
 ];
 
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+function generateFamilyCode() {
+  const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const D = '23456789';
+  const r = (s) => s[Math.floor(Math.random() * s.length)];
+  return `${r(L)}${r(L)}${r(L)}${r(L)}-${r(D)}${r(D)}${r(D)}${r(D)}`;
 }
-
-function save(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-}
-
-export { PRESET_COLORS };
 
 export function AppProvider({ children }) {
-  const saved = load();
+  const savedCode = localStorage.getItem(CODE_KEY);
+  const [familyCode, setFamilyCode] = useState(savedCode);
+  const familyCodeRef = useRef(savedCode);
 
-  const [isSetup, setIsSetup] = useState(saved?.isSetup || false);
-  const [members, setMembers] = useState(saved?.members || []);
-  const [chores, setChores] = useState(saved?.chores || []);
-  const [rewards, setRewards] = useState(saved?.rewards || []);
-  const [rewardClaims, setRewardClaims] = useState(saved?.rewardClaims || []);
-  const [activityFeed, setActivityFeed] = useState(saved?.activityFeed || []);
+  const [isLoading, setIsLoading]       = useState(!!savedCode);
+  const [isSetup,   setIsSetup]         = useState(false);
+  const [members,   setMembers]         = useState([]);
+  const [chores,    setChores]          = useState([]);
+  const [rewards,   setRewards]         = useState([]);
+  const [rewardClaims, setRewardClaims] = useState([]);
+  const [activityFeed, setActivityFeed] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [syncError, setSyncError]       = useState(null);
 
   const currentUser = members.find(m => m.id === currentUserId) || null;
 
-  // Persist all state changes
-  useEffect(() => {
-    save({ isSetup, members, chores, rewards, rewardClaims, activityFeed });
-  }, [isSetup, members, chores, rewards, rewardClaims, activityFeed]);
-
-  const addActivity = useCallback((entry) => {
-    setActivityFeed(prev => [
-      { id: `a${Date.now()}`, ts: new Date().toISOString(), ...entry },
-      ...prev,
-    ]);
+  // ─── Firestore sync helper ───────────────────────────────────────────────
+  const syncToFirestore = useCallback(async (updates) => {
+    const code = familyCodeRef.current;
+    if (!code) return;
+    try {
+      await updateDoc(doc(db, 'families', code), updates);
+      setSyncError(null);
+    } catch (err) {
+      console.error('Sync error:', err);
+      setSyncError('Changes may not have saved. Check your connection.');
+    }
   }, []);
 
-  // --- Setup ---
-  const completeOnboarding = useCallback((newMembers) => {
+  // ─── Subscribe to Firestore when we have a code ──────────────────────────
+  useEffect(() => {
+    if (!familyCode) { setIsLoading(false); return; }
+    familyCodeRef.current = familyCode;
+
+    const unsub = onSnapshot(doc(db, 'families', familyCode), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setMembers(d.members       || []);
+        setChores(d.chores         || []);
+        setRewards(d.rewards       || []);
+        setRewardClaims(d.rewardClaims || []);
+        setActivityFeed(d.activityFeed || []);
+        setIsSetup(true);
+      } else {
+        // Code not found — clear it
+        localStorage.removeItem(CODE_KEY);
+        setFamilyCode(null);
+        familyCodeRef.current = null;
+        setIsSetup(false);
+      }
+      setIsLoading(false);
+    }, (err) => {
+      console.error('Firestore error:', err);
+      setSyncError('Could not connect. Check your internet connection.');
+      setIsLoading(false);
+    });
+
+    return unsub;
+  }, [familyCode]);
+
+  // ─── Setup ───────────────────────────────────────────────────────────────
+  const completeOnboarding = useCallback(async (newMembers) => {
+    const code = generateFamilyCode();
     const coloredMembers = newMembers.map((m, i) => ({
       ...m,
       points: 0,
@@ -69,19 +102,34 @@ export function AppProvider({ children }) {
     }));
     const parentId = coloredMembers.find(m => m.role === 'parent')?.id;
     const starterRewards = STARTER_REWARDS.map((r, i) => ({
-      ...r,
-      id: `r${Date.now() + i}`,
-      createdBy: parentId || 'system',
+      ...r, id: `r${Date.now() + i}`, createdBy: parentId || 'system',
     }));
-    setMembers(coloredMembers);
-    setRewards(starterRewards);
-    setChores([]);
-    setRewardClaims([]);
-    setActivityFeed([]);
-    setIsSetup(true);
+    const familyData = {
+      members: coloredMembers,
+      chores: [],
+      rewards: starterRewards,
+      rewardClaims: [],
+      activityFeed: [],
+      createdAt: new Date().toISOString(),
+    };
+    await setDoc(doc(db, 'families', code), familyData);
+    localStorage.setItem(CODE_KEY, code);
+    familyCodeRef.current = code;
+    setFamilyCode(code);
+  }, []);
+
+  const joinFamily = useCallback(async (code) => {
+    const snap = await getDoc(doc(db, 'families', code.toUpperCase().trim()));
+    if (!snap.exists()) throw new Error('Family code not found');
+    localStorage.setItem(CODE_KEY, code.toUpperCase().trim());
+    familyCodeRef.current = code.toUpperCase().trim();
+    setFamilyCode(code.toUpperCase().trim());
   }, []);
 
   const resetApp = useCallback(() => {
+    localStorage.removeItem(CODE_KEY);
+    familyCodeRef.current = null;
+    setFamilyCode(null);
     setIsSetup(false);
     setMembers([]);
     setChores([]);
@@ -89,66 +137,89 @@ export function AppProvider({ children }) {
     setRewardClaims([]);
     setActivityFeed([]);
     setCurrentUserId(null);
-    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  // --- Members ---
+  // ─── Members ─────────────────────────────────────────────────────────────
   const addMember = useCallback((memberData) => {
-    const idx = members.length;
     const newMember = {
       id: `m${Date.now()}`,
       points: 0,
-      ...PRESET_COLORS[idx % PRESET_COLORS.length],
+      ...PRESET_COLORS[members.length % PRESET_COLORS.length],
       ...memberData,
     };
-    setMembers(prev => [...prev, newMember]);
+    const updated = [...members, newMember];
+    setMembers(updated);
+    syncToFirestore({ members: updated });
     return newMember;
-  }, [members.length]);
+  }, [members, syncToFirestore]);
 
   const updateMember = useCallback((id, updates) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-  }, []);
+    const updated = members.map(m => m.id === id ? { ...m, ...updates } : m);
+    setMembers(updated);
+    syncToFirestore({ members: updated });
+  }, [members, syncToFirestore]);
 
   const removeMember = useCallback((id) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
-    setChores(prev => prev.filter(c => c.assignedTo !== id));
-  }, []);
+    const updatedMembers = members.filter(m => m.id !== id);
+    const updatedChores  = chores.filter(c => c.assignedTo !== id);
+    setMembers(updatedMembers);
+    setChores(updatedChores);
+    syncToFirestore({ members: updatedMembers, chores: updatedChores });
+  }, [members, chores, syncToFirestore]);
 
-  // --- Chores ---
+  // ─── Chores ──────────────────────────────────────────────────────────────
+  const mkActivity = (type, extra = {}) => ({
+    id: `a${Date.now()}`,
+    ts: new Date().toISOString(),
+    memberId: currentUserId,
+    type,
+    ...extra,
+  });
+
+  const newFeed = (item, feed) => [item, ...feed].slice(0, 60);
+
   const completeChore = useCallback((choreId) => {
-    setChores(prev => prev.map(c =>
-      c.id === choreId ? { ...c, status: 'completed', completedAt: new Date().toISOString() } : c
-    ));
-    addActivity({ type: 'chore_completed', memberId: currentUserId, choreId });
-  }, [currentUserId, addActivity]);
+    const now = new Date().toISOString();
+    const updatedChores = chores.map(c =>
+      c.id === choreId ? { ...c, status: 'completed', completedAt: now } : c
+    );
+    const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
+    setChores(updatedChores);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToFirestore]);
 
   const approveChore = useCallback((choreId) => {
-    let earned = 0;
-    let assignedTo = null;
-    setChores(prev => prev.map(c => {
-      if (c.id === choreId) {
-        earned = c.points;
-        assignedTo = c.assignedTo;
-        return { ...c, status: 'approved', approvedAt: new Date().toISOString(), approvedBy: currentUserId };
-      }
-      return c;
-    }));
-    if (assignedTo) {
-      setMembers(prev => prev.map(m =>
-        m.id === assignedTo ? { ...m, points: m.points + earned } : m
-      ));
-      addActivity({ type: 'chore_approved', memberId: currentUserId, targetId: assignedTo, choreId });
-    }
-  }, [currentUserId, addActivity]);
+    const chore = chores.find(c => c.id === choreId);
+    if (!chore) return;
+    const updatedChores = chores.map(c =>
+      c.id === choreId
+        ? { ...c, status: 'approved', approvedAt: new Date().toISOString(), approvedBy: currentUserId }
+        : c
+    );
+    const updatedMembers = members.map(m =>
+      m.id === chore.assignedTo ? { ...m, points: m.points + chore.points } : m
+    );
+    const updatedFeed = newFeed(
+      mkActivity('chore_approved', { choreId, targetId: chore.assignedTo }), activityFeed
+    );
+    setChores(updatedChores);
+    setMembers(updatedMembers);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
+  }, [chores, members, activityFeed, currentUserId, syncToFirestore]);
 
   const rejectChore = useCallback((choreId, reason) => {
-    setChores(prev => prev.map(c =>
+    const updatedChores = chores.map(c =>
       c.id === choreId
         ? { ...c, status: 'pending', completedAt: null, rejectionReason: reason || '' }
         : c
-    ));
-    addActivity({ type: 'chore_rejected', memberId: currentUserId, choreId });
-  }, [currentUserId, addActivity]);
+    );
+    const updatedFeed = newFeed(mkActivity('chore_rejected', { choreId }), activityFeed);
+    setChores(updatedChores);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToFirestore]);
 
   const addChore = useCallback((choreData) => {
     const newChore = {
@@ -161,16 +232,23 @@ export function AppProvider({ children }) {
       rejectionReason: '',
       ...choreData,
     };
-    setChores(prev => [newChore, ...prev]);
-    addActivity({ type: 'chore_created', memberId: currentUserId, targetId: newChore.assignedTo, choreId: newChore.id });
+    const updatedChores = [newChore, ...chores];
+    const updatedFeed = newFeed(
+      mkActivity('chore_created', { choreId: newChore.id, targetId: newChore.assignedTo }), activityFeed
+    );
+    setChores(updatedChores);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
     return newChore;
-  }, [currentUserId, addActivity]);
+  }, [chores, activityFeed, currentUserId, syncToFirestore]);
 
   const deleteChore = useCallback((choreId) => {
-    setChores(prev => prev.filter(c => c.id !== choreId));
-  }, []);
+    const updated = chores.filter(c => c.id !== choreId);
+    setChores(updated);
+    syncToFirestore({ chores: updated });
+  }, [chores, syncToFirestore]);
 
-  // --- Rewards ---
+  // ─── Rewards ─────────────────────────────────────────────────────────────
   const claimReward = useCallback((rewardId) => {
     const claim = {
       id: `rc${Date.now()}`,
@@ -181,51 +259,62 @@ export function AppProvider({ children }) {
       approvedBy: null,
       approvedAt: null,
     };
-    setRewardClaims(prev => [claim, ...prev]);
-    addActivity({ type: 'reward_claimed', memberId: currentUserId, rewardId });
-  }, [currentUserId, addActivity]);
+    const updatedClaims = [claim, ...rewardClaims];
+    const updatedFeed   = newFeed(mkActivity('reward_claimed', { rewardId }), activityFeed);
+    setRewardClaims(updatedClaims);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ rewardClaims: updatedClaims, activityFeed: updatedFeed });
+  }, [rewardClaims, activityFeed, currentUserId, syncToFirestore]);
 
   const approveRewardClaim = useCallback((claimId) => {
-    let claimData = null;
-    setRewardClaims(prev => prev.map(c => {
-      if (c.id === claimId) {
-        claimData = c;
-        return { ...c, status: 'approved', approvedBy: currentUserId, approvedAt: new Date().toISOString() };
-      }
-      return c;
-    }));
-    if (claimData) {
-      const reward = rewards.find(r => r.id === claimData.rewardId);
-      if (reward) {
-        setMembers(prev => prev.map(m =>
-          m.id === claimData.claimedBy ? { ...m, points: Math.max(0, m.points - reward.pointCost) } : m
-        ));
-        addActivity({ type: 'reward_approved', memberId: currentUserId, targetId: claimData.claimedBy, rewardId: claimData.rewardId });
-      }
-    }
-  }, [rewards, currentUserId, addActivity]);
+    const claim  = rewardClaims.find(c => c.id === claimId);
+    const reward = rewards.find(r => r.id === claim?.rewardId);
+    if (!claim || !reward) return;
+    const updatedClaims  = rewardClaims.map(c =>
+      c.id === claimId
+        ? { ...c, status: 'approved', approvedBy: currentUserId, approvedAt: new Date().toISOString() }
+        : c
+    );
+    const updatedMembers = members.map(m =>
+      m.id === claim.claimedBy ? { ...m, points: Math.max(0, m.points - reward.pointCost) } : m
+    );
+    const updatedFeed = newFeed(
+      mkActivity('reward_approved', { rewardId: claim.rewardId, targetId: claim.claimedBy }), activityFeed
+    );
+    setRewardClaims(updatedClaims);
+    setMembers(updatedMembers);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ rewardClaims: updatedClaims, members: updatedMembers, activityFeed: updatedFeed });
+  }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToFirestore]);
 
   const rejectRewardClaim = useCallback((claimId) => {
-    setRewardClaims(prev => prev.map(c =>
+    const updated = rewardClaims.map(c =>
       c.id === claimId ? { ...c, status: 'rejected', approvedBy: currentUserId } : c
-    ));
-  }, [currentUserId]);
+    );
+    setRewardClaims(updated);
+    syncToFirestore({ rewardClaims: updated });
+  }, [rewardClaims, currentUserId, syncToFirestore]);
 
   const addReward = useCallback((rewardData) => {
     const newReward = { id: `r${Date.now()}`, createdBy: currentUserId, ...rewardData };
-    setRewards(prev => [newReward, ...prev]);
+    const updated = [newReward, ...rewards];
+    setRewards(updated);
+    syncToFirestore({ rewards: updated });
     return newReward;
-  }, [currentUserId]);
+  }, [rewards, currentUserId, syncToFirestore]);
 
   const deleteReward = useCallback((rewardId) => {
-    setRewards(prev => prev.filter(r => r.id !== rewardId));
-  }, []);
+    const updated = rewards.filter(r => r.id !== rewardId);
+    setRewards(updated);
+    syncToFirestore({ rewards: updated });
+  }, [rewards, syncToFirestore]);
 
   return (
     <AppContext.Provider value={{
-      isSetup, currentUser, currentUserId, setCurrentUserId, members,
-      chores, rewards, rewardClaims, activityFeed,
-      completeOnboarding, resetApp,
+      familyCode, isLoading, isSetup, syncError,
+      currentUser, currentUserId, setCurrentUserId,
+      members, chores, rewards, rewardClaims, activityFeed,
+      completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
       completeChore, approveChore, rejectChore, addChore, deleteChore,
       claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward,
