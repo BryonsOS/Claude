@@ -2,67 +2,50 @@ import { useApp } from '../context/AppContext';
 
 export default function LoginScreen() {
   const { members, setCurrentUserId } = useApp();
-  const parents = members.filter(m => m.role === 'parent');
-  const kids    = members.filter(m => m.role === 'child');
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-3">🏠</div>
-          <h1 className="text-4xl font-bold text-white mb-1">ChoreFamily</h1>
-          <p className="text-indigo-200 text-sm">Build habits. Earn rewards. Together.</p>
-        </div>
+    <div className="min-h-screen flex flex-col" style={{ background: '#1e1b4b' }}>
+      {/* Compact header */}
+      <div
+        className="flex flex-col items-center pt-10 pb-5 px-6 flex-shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)' }}
+      >
+        <span className="text-5xl mb-2">🏠</span>
+        <h1 className="text-2xl font-bold text-white">ChoreFamily</h1>
+        <p className="text-indigo-300 text-sm mt-1">Who's using the app?</p>
+      </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-6">
-          <p className="text-center text-gray-500 text-sm font-semibold mb-5 uppercase tracking-wider">
-            Who are you?
-          </p>
-
-          {parents.length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Parents</p>
-              <div className="grid grid-cols-2 gap-3">
-                {parents.map(m => (
-                  <MemberCard key={m.id} member={m} onSelect={() => setCurrentUserId(m.id)} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {kids.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Kids</p>
-              <div className="grid grid-cols-3 gap-3">
-                {kids.map(m => (
-                  <MemberCard key={m.id} member={m} onSelect={() => setCurrentUserId(m.id)} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <p className="text-center text-indigo-200 text-xs mt-5">Tap your name to get started</p>
+      {/* Full-screen member grid */}
+      <div className="flex-1 grid grid-cols-2 gap-3 p-3 pb-6"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}>
+        {members.map(member => (
+          <MemberTile
+            key={member.id}
+            member={member}
+            onSelect={() => setCurrentUserId(member.id)}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function MemberCard({ member, onSelect }) {
+function MemberTile({ member, onSelect }) {
   return (
     <button
       onClick={onSelect}
-      className="flex flex-col items-center py-5 px-3 rounded-2xl border-2 border-transparent active:scale-95 transition-all"
-      style={{ backgroundColor: member.bg }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = member.color}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+      className="flex flex-col items-center justify-center rounded-3xl active:scale-95 transition-transform gap-3"
+      style={{ backgroundColor: member.bg, minHeight: '160px' }}
     >
-      <span className="text-4xl mb-2">{member.emoji}</span>
-      <span className="text-sm font-bold" style={{ color: member.color }}>{member.name}</span>
-      <span className="text-xs text-gray-400 mt-1">
-        {member.role === 'child' ? `${member.points} pts` : 'Parent'}
-      </span>
+      <span className="text-6xl leading-none">{member.emoji}</span>
+      <div className="text-center px-2">
+        <p className="font-bold text-lg leading-tight" style={{ color: member.color }}>
+          {member.name}
+        </p>
+        <p className="text-sm mt-0.5" style={{ color: member.color, opacity: 0.7 }}>
+          {member.role === 'parent' ? 'Parent' : `✨ ${member.points} pts`}
+        </p>
+      </div>
     </button>
   );
 }

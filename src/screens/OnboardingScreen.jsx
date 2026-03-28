@@ -55,18 +55,31 @@ function CreateFlow({ onBack, onCreate }) {
   const [parents, setParents] = useState([{ id: `p${Date.now()}`, name: '', emoji: '👩', role: 'parent' }]);
   const [kids,    setKids]    = useState([{ id: `k${Date.now()}`, name: '', emoji: '👧', role: 'child' }]);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
 
   const canNext0 = parents.some(p => p.name.trim());
   const canNext1 = kids.some(k => k.name.trim());
 
   const handleFinish = async () => {
     setLoading(true);
+    setError('');
     const allMembers = [
       ...parents.filter(p => p.name.trim()).map((p, i) => ({ ...p, name: p.name.trim(), ...PRESET_COLORS[i % PRESET_COLORS.length] })),
       ...kids.filter(k => k.name.trim()).map((k, i) => ({ ...k, name: k.name.trim(), ...PRESET_COLORS[(parents.length + i) % PRESET_COLORS.length] })),
     ];
-    await onCreate(allMembers);
-    setLoading(false);
+    try {
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
+      );
+      await Promise.race([onCreate(allMembers), timeout]);
+    } catch (err) {
+      setError(
+        err.message === 'timeout'
+          ? 'Connection timed out. Make sure the Firebase secrets are added in GitHub and the site was redeployed.'
+          : `Setup failed: ${err.message}`
+      );
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,11 +115,17 @@ function CreateFlow({ onBack, onCreate }) {
             <p className="text-sm text-gray-500 mb-5">Who will be doing chores?</p>
             <MemberList members={kids} setMembers={setKids} emojiOptions={KID_EMOJIS} />
             <AddBtn onClick={() => setKids(k => [...k, { id: `k${Date.now()}`, name: '', emoji: '👦', role: 'child' }])} label="Add another kid" />
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setStep(0)} className="px-5 py-3 rounded-xl text-gray-400 text-sm">Back</button>
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setStep(0)} disabled={loading}
+                className="px-5 py-3 rounded-xl text-gray-400 text-sm">Back</button>
               <button onClick={handleFinish} disabled={!canNext1 || loading}
                 className="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-500 disabled:opacity-40 text-base">
-                {loading ? 'Setting up…' : 'Finish ✓'}
+                {loading ? '⏳ Saving…' : 'Finish ✓'}
               </button>
             </div>
           </div>
