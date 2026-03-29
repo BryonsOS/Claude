@@ -1,45 +1,67 @@
 import { useApp } from '../context/AppContext';
 
+const D = {
+  bg:      '#0d1117',
+  card:    '#161b22',
+  border:  'rgba(255,255,255,0.08)',
+  textPri: '#f0f6fc',
+  textSec: '#8b949e',
+};
+
 export default function LoginScreen() {
   const { members: allMembers, accessLevel, setCurrentUserId } = useApp();
 
-  // Kids-only devices can only see child members
   const members = accessLevel === 'kids-only'
     ? allMembers.filter(m => m.role === 'child')
     : allMembers;
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        background: 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-      }}
-    >
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(160deg, #0a0e1a 0%, #0d1117 50%, #0f0c1a 100%)',
+    }}>
       {/* Header */}
-      <div
-        className="flex flex-col items-center flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', paddingBottom: '1.5rem' }}
-      >
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-3 shadow-2xl"
-          style={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            boxShadow: '0 8px 32px rgba(99,102,241,0.5)',
-          }}
-        >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)',
+        paddingBottom: '1.5rem',
+      }}>
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 36,
+          marginBottom: 12,
+          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          boxShadow: '0 8px 32px rgba(99,102,241,0.5)',
+        }}>
           🏠
         </div>
-        <h1 className="text-3xl font-black text-white tracking-tight">ChoreFamily</h1>
-        <p className="text-indigo-300 text-sm mt-1 font-medium">
-          {accessLevel === 'kids-only' ? "Choose your character!" : "Who's playing?"}
+        <h1 style={{ color: D.textPri, fontSize: 30, fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+          ChoreFamily
+        </h1>
+        <p style={{ color: '#818cf8', fontSize: 14, fontWeight: 600, margin: 0 }}>
+          {accessLevel === 'kids-only' ? 'Choose your character!' : "Who's playing?"}
         </p>
       </div>
 
       {/* Member grid */}
-      <div
-        className="flex-1 grid grid-cols-2 gap-4 px-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)', alignContent: 'start' }}
-      >
+      <div style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 16,
+        padding: '0 16px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)',
+        alignContent: 'start',
+      }}>
         {members.map(member => (
           <MemberTile
             key={member.id}
@@ -58,46 +80,95 @@ function MemberTile({ member, onSelect }) {
   return (
     <button
       onClick={onSelect}
-      className="flex flex-col items-center justify-center rounded-3xl active:scale-95 transition-all gap-3 relative overflow-hidden"
       style={{
-        minHeight: '172px',
-        background: `linear-gradient(145deg, ${member.bg} 0%, white 100%)`,
-        boxShadow: `0 8px 30px ${member.color}40, 0 2px 8px rgba(0,0,0,0.15)`,
-        border: `2px solid ${member.color}30`,
+        minHeight: 172,
+        background: D.card,
+        border: `1px solid ${member.color}30`,
+        borderRadius: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        boxShadow: `0 0 0 0 ${member.color}00, 0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`,
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = `0 0 24px ${member.color}30, 0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`;
+        e.currentTarget.style.transform = 'scale(1.02)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = `0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`;
+        e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      {/* Subtle glow circle in background */}
-      <div
-        className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-20"
-        style={{ backgroundColor: member.color }}
-      />
+      {/* Color accent bar at top */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        background: `linear-gradient(90deg, ${member.color}, ${member.color}88)`,
+      }} />
+
+      {/* Subtle glow orb */}
+      <div style={{
+        position: 'absolute',
+        top: -20,
+        right: -20,
+        width: 80,
+        height: 80,
+        borderRadius: '50%',
+        background: member.color,
+        opacity: 0.08,
+        filter: 'blur(20px)',
+      }} />
 
       {/* Role badge */}
-      <div
-        className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-black"
-        style={{
-          background: isParent
-            ? 'linear-gradient(135deg, #f59e0b, #f97316)'
-            : `linear-gradient(135deg, ${member.color}, ${member.color}cc)`,
-          color: 'white',
-          fontSize: '10px',
-          letterSpacing: '0.05em',
-        }}
-      >
+      <div style={{
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        padding: '3px 8px',
+        borderRadius: 99,
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: '0.06em',
+        background: isParent
+          ? 'linear-gradient(135deg, #f59e0b, #f97316)'
+          : `${member.color}22`,
+        color: isParent ? 'white' : member.color,
+        border: isParent ? 'none' : `1px solid ${member.color}44`,
+      }}>
         {isParent ? '👑 PARENT' : 'PLAYER'}
       </div>
 
-      <span className="text-6xl leading-none relative z-10">{member.emoji}</span>
+      {/* Emoji */}
+      <span style={{ fontSize: 56, lineHeight: 1, position: 'relative', zIndex: 1 }}>
+        {member.emoji}
+      </span>
 
-      <div className="text-center px-3 relative z-10">
-        <p className="font-black text-lg leading-tight" style={{ color: member.color }}>
+      {/* Name + points */}
+      <div style={{ textAlign: 'center', padding: '0 12px', position: 'relative', zIndex: 1 }}>
+        <p style={{ color: D.textPri, fontWeight: 800, fontSize: 17, margin: '0 0 6px', lineHeight: 1 }}>
           {member.name}
         </p>
         {!isParent && (
-          <div
-            className="mt-1.5 px-3 py-0.5 rounded-full text-xs font-black inline-block"
-            style={{ backgroundColor: member.color, color: 'white' }}
-          >
+          <div style={{
+            display: 'inline-block',
+            padding: '3px 10px',
+            borderRadius: 99,
+            fontSize: 12,
+            fontWeight: 800,
+            background: `${member.color}22`,
+            color: member.color,
+            border: `1px solid ${member.color}44`,
+          }}>
             ✨ {member.points} pts
           </div>
         )}
