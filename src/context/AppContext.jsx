@@ -51,7 +51,55 @@ export function AppProvider({ children }) {
   const [syncError,    setSyncError]    = useState(null);
   const [kidCode,      setKidCode]      = useState(null);
 
-  const currentUser = members.find(m => m.id === currentUserId) || null;
+  const currentUser    = members.find(m => m.id === currentUserId) || null;
+  const prevChoresRef  = useRef(null);
+
+  // ─── Request notification permission once ───────────────────────────────
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ─── Detect chore changes and fire browser notifications ────────────────
+  useEffect(() => {
+    if (!currentUser) { prevChoresRef.current = chores; return; }
+    if (prevChoresRef.current === null) { prevChoresRef.current = chores; return; }
+
+    const fire = (title, body) => {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/icon-192.png' });
+      }
+    };
+
+    if (currentUser.role === 'parent') {
+      // Notify parent when a kid marks a chore done
+      chores.forEach(chore => {
+        const prev = prevChoresRef.current.find(c => c.id === chore.id);
+        if (prev && prev.status !== 'completed' && chore.status === 'completed') {
+          const kid = members.find(m => m.id === chore.assignedTo);
+          fire('✅ Chore Needs Approval', `${kid?.name || 'Someone'} finished "${chore.title}"`);
+        }
+      });
+    } else if (currentUser.role === 'child') {
+      // Notify kid when a new chore is assigned to them
+      chores.forEach(chore => {
+        const existed = prevChoresRef.current.find(c => c.id === chore.id);
+        if (!existed && chore.assignedTo === currentUserId && chore.status === 'pending') {
+          fire('📋 New Chore!', `You've got a new task: "${chore.title}"`);
+        }
+      });
+      // Notify kid when a rejected chore needs redoing
+      chores.forEach(chore => {
+        const prev = prevChoresRef.current.find(c => c.id === chore.id);
+        if (prev && prev.status === 'completed' && chore.status === 'pending' && chore.assignedTo === currentUserId && chore.rejectionReason) {
+          fire('🔁 Redo Required', `"${chore.title}" was sent back — check the note!`);
+        }
+      });
+    }
+
+    prevChoresRef.current = chores;
+  }, [chores]);
 
   // ─── Firestore sync helper ───────────────────────────────────────────────
   const syncToFirestore = useCallback(async (updates) => {
@@ -291,6 +339,12 @@ export function AppProvider({ children }) {
     syncToFirestore({ chores: updated });
   }, [chores, syncToFirestore]);
 
+  const updateChore = useCallback((choreId, changes) => {
+    const updated = chores.map(c => c.id === choreId ? { ...c, ...changes } : c);
+    setChores(updated);
+    syncToFirestore({ chores: updated });
+  }, [chores, syncToFirestore]);
+
   // ─── Rewards ─────────────────────────────────────────────────────────────
   const claimReward = useCallback((rewardId) => {
     const claim = {
@@ -360,7 +414,7 @@ export function AppProvider({ children }) {
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
-      completeChore, approveChore, rejectChore, addChore, deleteChore,
+      completeChore, approveChore, rejectChore, addChore, deleteChore, updateChore,
       claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward,
     }}>
       {children}

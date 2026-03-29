@@ -217,12 +217,27 @@ function ChoreCard({ chore, onClick }) {
 }
 
 function ChoreDetailModal({ chore, onClose }) {
-  const { currentUser, approveChore, rejectChore, completeChore } = useApp();
+  const { currentUser, members, approveChore, rejectChore, completeChore, updateChore, deleteChore } = useApp();
   const [rejectReason, setRejectReason] = useState('');
   const [showReject,   setShowReject]   = useState(false);
+  const [editing,      setEditing]      = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editForm,     setEditForm]     = useState({
+    title: chore.title,
+    description: chore.description || '',
+    points: chore.points,
+    dueDate: chore.dueDate,
+    recurrence: chore.recurrence,
+  });
+  const setE = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
+
   const cat      = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent = currentUser.role === 'parent';
   const st       = STATUS_MAP[chore.status] || STATUS_MAP.pending;
+  const assignedKid = members.find(m => m.id === chore.assignedTo);
+
+  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
+  const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
 
   return (
     <div
@@ -230,86 +245,140 @@ function ChoreDetailModal({ chore, onClose }) {
       onClick={onClose}
     >
       <div
-        style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 24px 40px', border: `1px solid ${D.border}` }}
+        style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 24px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
 
+        {/* Header row with edit/delete for parents */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 18, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{cat.emoji}</div>
-          <div>
-            <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 20, margin: '0 0 4px' }}>{chore.title}</h3>
-            <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
-          </div>
-        </div>
-
-        {chore.description && (
-          <p style={{ color: D.textSec, fontSize: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>{chore.description}</p>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-          {[
-            { label: 'Points', value: `✨ ${chore.points}` },
-            { label: 'Due', value: `📅 ${formatDate(chore.dueDate)}` },
-            { label: 'Repeats', value: `🔁 ${chore.recurrence}` },
-            { label: 'Category', value: `${cat.emoji} ${cat.label}` },
-          ].map(t => (
-            <div key={t.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 12px' }}>
-              <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 2px' }}>{t.label}</p>
-              <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: 0 }}>{t.value}</p>
+          <div style={{ width: 60, height: 60, borderRadius: 18, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, flexShrink: 0 }}>{cat.emoji}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 20, margin: '0 0 4px', lineHeight: 1.2 }}>{chore.title}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
+              {assignedKid && (
+                <span style={{ color: D.textSec, fontSize: 12 }}>{assignedKid.emoji} {assignedKid.name}</span>
+              )}
             </div>
-          ))}
+          </div>
+          {isParent && !editing && (
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => setEditing(true)} style={{ padding: '8px 14px', borderRadius: 12, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer' }}>Edit</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: '8px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13, background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>🗑</button>
+            </div>
+          )}
         </div>
 
-        {isParent && chore.status === 'completed' && !showReject && (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { approveChore(chore.id); onClose(); }}
-              style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}>
-              Approve ✓
-            </button>
-            <button onClick={() => setShowReject(true)}
-              style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: '#f87171', fontSize: 16, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
-              Send Back
-            </button>
-          </div>
-        )}
-        {isParent && chore.status === 'completed' && showReject && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <textarea
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              placeholder="Tell them what needs to be fixed..."
-              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 14, resize: 'none', boxSizing: 'border-box' }}
-              rows={3}
-            />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { rejectChore(chore.id, rejectReason); onClose(); }}
-                style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', background: '#dc2626', border: 'none', cursor: 'pointer' }}>
-                Send Back
-              </button>
-              <button onClick={() => setShowReject(false)}
-                style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>
-                Cancel
-              </button>
+        {/* Delete confirmation */}
+        {confirmDelete && (
+          <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 16, padding: '14px', marginBottom: 14 }}>
+            <p style={{ color: '#fca5a5', fontWeight: 700, fontSize: 14, margin: '0 0 10px' }}>Delete this chore?</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { deleteChore(chore.id); onClose(); }} style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 900, color: 'white', background: '#dc2626', border: 'none', cursor: 'pointer' }}>Delete</button>
+              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 700, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         )}
-        {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
-          <button
-            onClick={() => { completeChore(chore.id); onClose(); }}
-            style={{
-              width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16,
-              background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`,
-              boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer',
-            }}>
-            Mark as Complete ✓
-          </button>
-        )}
-        {chore.rejectionReason && (
-          <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '10px 14px' }}>
-            <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>PARENT'S NOTE:</p>
-            <p style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{chore.rejectionReason}</p>
+
+        {/* Edit form */}
+        {editing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div><label style={labelStyle}>Chore Title</label><input autoFocus type="text" value={editForm.title} onChange={e => setE('title', e.target.value)} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Description</label><textarea value={editForm.description} onChange={e => setE('description', e.target.value)} style={{ ...inputStyle, resize: 'none' }} rows={2} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Points</label><input type="number" value={editForm.points} onChange={e => setE('points', Number(e.target.value))} min="5" max="200" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Due Date</label><input type="date" value={editForm.dueDate} onChange={e => setE('dueDate', e.target.value)} style={inputStyle} /></div>
+            </div>
+            <div>
+              <label style={labelStyle}>Repeats</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['once', 'daily', 'weekly'].map(r => (
+                  <button key={r} onClick={() => setE('recurrence', r)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, border: `1px solid ${editForm.recurrence === r ? '#6366f1' : D.border}`, background: editForm.recurrence === r ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: editForm.recurrence === r ? '#818cf8' : D.textSec, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button
+                onClick={() => { if (!editForm.title.trim()) return; updateChore(chore.id, editForm); onClose(); }}
+                disabled={!editForm.title.trim()}
+                style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', opacity: editForm.title.trim() ? 1 : 0.4 }}>
+                Save Changes
+              </button>
+              <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 700, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+            </div>
           </div>
+        ) : (
+          <>
+            {chore.description && (
+              <p style={{ color: D.textSec, fontSize: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>{chore.description}</p>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+              {[
+                { label: 'Points', value: `✨ ${chore.points}` },
+                { label: 'Due', value: `📅 ${formatDate(chore.dueDate)}` },
+                { label: 'Repeats', value: `🔁 ${chore.recurrence}` },
+                { label: 'Category', value: `${cat.emoji} ${cat.label}` },
+              ].map(t => (
+                <div key={t.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 12px' }}>
+                  <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 2px' }}>{t.label}</p>
+                  <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: 0 }}>{t.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {isParent && chore.status === 'completed' && !showReject && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => { approveChore(chore.id); onClose(); }}
+                  style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}>
+                  Approve ✓
+                </button>
+                <button onClick={() => setShowReject(true)}
+                  style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: '#f87171', fontSize: 16, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
+                  Send Back
+                </button>
+              </div>
+            )}
+            {isParent && chore.status === 'completed' && showReject && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <textarea
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  placeholder="Tell them what needs to be fixed..."
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 14, resize: 'none', boxSizing: 'border-box' }}
+                  rows={3}
+                />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { rejectChore(chore.id, rejectReason); onClose(); }}
+                    style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', background: '#dc2626', border: 'none', cursor: 'pointer' }}>
+                    Send Back
+                  </button>
+                  <button onClick={() => setShowReject(false)}
+                    style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
+              <button
+                onClick={() => { completeChore(chore.id); onClose(); }}
+                style={{
+                  width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16,
+                  background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`,
+                  boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer',
+                }}>
+                Mark as Complete ✓
+              </button>
+            )}
+            {chore.rejectionReason && (
+              <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '10px 14px' }}>
+                <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>PARENT'S NOTE:</p>
+                <p style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{chore.rejectionReason}</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
