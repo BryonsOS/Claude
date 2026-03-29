@@ -42,13 +42,24 @@ function ParentHome({ setActiveTab }) {
       <div className="px-4 space-y-4 -mt-3">
         {/* Needs attention */}
         {needsAction > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2"
-              style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316)' }}>
-              <span className="text-white text-lg">⚡</span>
-              <span className="text-white font-bold">Needs your approval</span>
+          <div
+            className="rounded-3xl overflow-hidden"
+            style={{ boxShadow: '0 6px 24px rgba(245,158,11,0.3)' }}
+          >
+            <div
+              className="px-4 py-3 flex items-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)' }}
+            >
+              <span className="text-white text-xl">⚡</span>
+              <span className="text-white font-black text-base">Needs your approval</span>
+              <span
+                className="ml-auto bg-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black"
+                style={{ color: '#f97316' }}
+              >
+                {needsAction}
+              </span>
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="bg-white divide-y divide-gray-50">
               {pendingApprovals.map(c => (
                 <ApprovalRow key={c.id} chore={c} onTap={() => setActiveTab('chores')} />
               ))}
@@ -208,36 +219,65 @@ function KidHome({ setActiveTab }) {
 
   return (
     <div className="max-w-lg mx-auto pb-6">
-      {/* Hero */}
-      <div className="relative overflow-hidden px-4 pt-5 pb-8"
-        style={{ background: `linear-gradient(135deg, ${currentUser.color} 0%, ${currentUser.color}bb 100%)` }}>
-        <div className="absolute -right-6 -top-6 w-32 h-32 bg-white opacity-10 rounded-full" />
-        <div className="absolute right-4 -bottom-8 w-24 h-24 bg-white opacity-5 rounded-full" />
+      {/* Game-style hero */}
+      <div
+        className="relative overflow-hidden px-4 pt-6 pb-10"
+        style={{
+          background: `linear-gradient(145deg, ${currentUser.color} 0%, ${currentUser.color}99 100%)`,
+        }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-20" style={{ background: 'white' }} />
+        <div className="absolute right-10 bottom-0 w-28 h-28 rounded-full opacity-10" style={{ background: 'white' }} />
+        <div className="absolute -left-4 bottom-2 w-20 h-20 rounded-full opacity-10" style={{ background: 'white' }} />
+
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-16 h-16 rounded-2xl bg-white bg-opacity-20 flex items-center justify-center text-4xl">
+          {/* Avatar + name */}
+          <div className="flex items-center gap-4 mb-5">
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center text-5xl flex-shrink-0 shadow-xl"
+              style={{ background: 'rgba(255,255,255,0.25)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
+            >
               {currentUser.emoji}
             </div>
             <div>
-              <p className="text-white text-opacity-75 text-sm">Hey there,</p>
-              <h1 className="text-3xl font-black text-white">{currentUser.name}!</h1>
+              <p className="text-white text-sm font-bold" style={{ opacity: 0.75 }}>Let's go,</p>
+              <h1 className="text-4xl font-black text-white leading-none">{currentUser.name}!</h1>
+              {streak > 0 && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <span className="text-base">🔥</span>
+                  <span className="text-white font-black text-sm">{streak} day streak!</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Stats row */}
           <div className="grid grid-cols-3 gap-2">
             <HeroStat label="Points" value={currentUser.points} icon="✨" />
-            <HeroStat label="Streak" value={`${streak}d`} icon="🔥" />
-            <HeroStat label="Today" value={`${done}/${todayChores.length}`} icon="✅" />
+            <HeroStat label="Done" value={`${done}/${todayChores.length}`} icon="✅" />
+            <HeroStat label="Waiting" value={waiting} icon="⏳" />
           </div>
         </div>
       </div>
 
-      <div className="px-4 space-y-4 -mt-2">
+      <div className="px-4 space-y-4 -mt-4">
         {/* All done banner */}
         {pending.length === 0 && todayChores.length > 0 && (
-          <div className="bg-green-500 rounded-2xl p-4 text-center shadow-lg">
-            <p className="text-3xl mb-1">🎉</p>
-            <p className="font-black text-white text-lg">All done today!</p>
-            {waiting > 0 && <p className="text-green-100 text-sm mt-0.5">{waiting} chore{waiting > 1 ? 's' : ''} waiting for approval</p>}
+          <div
+            className="rounded-3xl p-5 text-center shadow-xl"
+            style={{
+              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+              boxShadow: '0 8px 30px rgba(34,197,94,0.4)',
+            }}
+          >
+            <p className="text-4xl mb-1">🎉</p>
+            <p className="font-black text-white text-xl">You crushed it today!</p>
+            {waiting > 0 && (
+              <p className="text-green-100 text-sm mt-1 font-medium">
+                {waiting} chore{waiting > 1 ? 's' : ''} waiting for parent approval
+              </p>
+            )}
           </div>
         )}
 
@@ -304,8 +344,11 @@ function KidHome({ setActiveTab }) {
 
 function HeroStat({ label, value, icon }) {
   return (
-    <div className="bg-white bg-opacity-20 rounded-2xl p-3 text-center">
-      <p className="text-white text-opacity-70 text-xs mb-0.5">{label}</p>
+    <div
+      className="rounded-2xl p-3 text-center"
+      style={{ background: 'rgba(255,255,255,0.22)' }}
+    >
+      <p className="text-white text-xs font-bold mb-0.5" style={{ opacity: 0.75 }}>{label}</p>
       <p className="text-white font-black text-xl leading-none">{icon} {value}</p>
     </div>
   );
@@ -314,19 +357,35 @@ function HeroStat({ label, value, icon }) {
 function BigChoreCard({ chore, onComplete, color }) {
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex">
-      <div className="w-1.5 flex-shrink-0" style={{ backgroundColor: color }} />
-      <div className="flex items-center gap-3 flex-1 px-4 py-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-          style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900">{chore.title}</p>
-          <p className="text-xs text-gray-400 mt-0.5">+{chore.points} pts</p>
+    <div
+      className="bg-white rounded-3xl overflow-hidden shadow-lg"
+      style={{ boxShadow: `0 4px 20px ${color}20, 0 2px 8px rgba(0,0,0,0.06)` }}
+    >
+      <div className="flex items-center gap-3 px-4 py-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 shadow-sm"
+          style={{ backgroundColor: cat.bg }}
+        >
+          {cat.emoji}
         </div>
-        <button onClick={onComplete}
-          className="px-4 py-2.5 rounded-xl font-bold text-white text-sm flex-shrink-0"
-          style={{ backgroundColor: color }}>
-          Done ✓
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-gray-900 text-base leading-tight">{chore.title}</p>
+          <div
+            className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-black"
+            style={{ background: `${color}18`, color }}
+          >
+            +{chore.points} pts
+          </div>
+        </div>
+        <button
+          onClick={onComplete}
+          className="px-5 py-3.5 rounded-2xl font-black text-white text-sm flex-shrink-0 active:scale-90 transition-transform"
+          style={{
+            background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
+            boxShadow: `0 4px 16px ${color}55`,
+          }}
+        >
+          ✓ Done
         </button>
       </div>
     </div>

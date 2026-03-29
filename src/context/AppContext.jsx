@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 
 const AppContext = createContext(null);
-const CODE_KEY = 'chorefamily_code';
+const CODE_KEY   = 'chorefamily_code';
+const ACCESS_KEY = 'chorefamily_access';
 
 export const PRESET_COLORS = [
   { color: '#6366f1', bg: '#eef2ff' },
@@ -17,11 +18,11 @@ export const PRESET_COLORS = [
 ];
 
 const STARTER_REWARDS = [
-  { title: 'Extra Screen Time', pointCost: 50, emoji: '🎮', description: '1 extra hour of games or TV.' },
-  { title: 'Choose Dinner',     pointCost: 75, emoji: '🍕', description: 'Pick what the family has for dinner.' },
-  { title: 'Movie Night Pick',  pointCost: 60, emoji: '🎬', description: 'Pick the movie for family movie night.' },
-  { title: 'Stay Up Late',      pointCost: 80, emoji: '🌙', description: 'One night 1 hour past bedtime.' },
-  { title: 'No Chores Day',     pointCost: 150,emoji: '🏖️', description: 'One full day off from all chores.' },
+  { title: 'Extra Screen Time', pointCost: 50,  emoji: '🎮', description: '1 extra hour of games or TV.' },
+  { title: 'Choose Dinner',     pointCost: 75,  emoji: '🍕', description: 'Pick what the family has for dinner.' },
+  { title: 'Movie Night Pick',  pointCost: 60,  emoji: '🎬', description: 'Pick the movie for family movie night.' },
+  { title: 'Stay Up Late',      pointCost: 80,  emoji: '🌙', description: 'One night 1 hour past bedtime.' },
+  { title: 'No Chores Day',     pointCost: 150, emoji: '🏖️', description: 'One full day off from all chores.' },
 ];
 
 function generateFamilyCode() {
@@ -32,19 +33,23 @@ function generateFamilyCode() {
 }
 
 export function AppProvider({ children }) {
-  const savedCode = localStorage.getItem(CODE_KEY);
-  const [familyCode, setFamilyCode] = useState(savedCode);
+  const savedCode   = localStorage.getItem(CODE_KEY);
+  const savedAccess = localStorage.getItem(ACCESS_KEY) || 'full';
+
+  const [familyCode,   setFamilyCode]   = useState(savedCode);
+  const [accessLevel,  setAccessLevel]  = useState(savedAccess);
   const familyCodeRef = useRef(savedCode);
 
-  const [isLoading, setIsLoading]       = useState(!!savedCode);
-  const [isSetup,   setIsSetup]         = useState(false);
-  const [members,   setMembers]         = useState([]);
-  const [chores,    setChores]          = useState([]);
-  const [rewards,   setRewards]         = useState([]);
+  const [isLoading,    setIsLoading]    = useState(!!savedCode);
+  const [isSetup,      setIsSetup]      = useState(false);
+  const [members,      setMembers]      = useState([]);
+  const [chores,       setChores]       = useState([]);
+  const [rewards,      setRewards]      = useState([]);
   const [rewardClaims, setRewardClaims] = useState([]);
   const [activityFeed, setActivityFeed] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [syncError, setSyncError]       = useState(null);
+  const [syncError,    setSyncError]    = useState(null);
+  const [kidCode,      setKidCode]      = useState(null);
 
   const currentUser = members.find(m => m.id === currentUserId) || null;
 
@@ -74,10 +79,11 @@ export function AppProvider({ children }) {
         setRewards(d.rewards       || []);
         setRewardClaims(d.rewardClaims || []);
         setActivityFeed(d.activityFeed || []);
+        setKidCode(d.kidCode       || null);
         setIsSetup(true);
       } else {
-        // Code not found — clear it
         localStorage.removeItem(CODE_KEY);
+        localStorage.removeItem(ACCESS_KEY);
         setFamilyCode(null);
         familyCodeRef.current = null;
         setIsSetup(false);
@@ -94,7 +100,9 @@ export function AppProvider({ children }) {
 
   // ─── Setup ───────────────────────────────────────────────────────────────
   const completeOnboarding = useCallback(async (newMembers) => {
-    const code = generateFamilyCode();
+    const parentCode = generateFamilyCode();
+    const kCode      = generateFamilyCode();
+
     const coloredMembers = newMembers.map((m, i) => ({
       ...m,
       points: 0,
@@ -110,26 +118,60 @@ export function AppProvider({ children }) {
       rewards: starterRewards,
       rewardClaims: [],
       activityFeed: [],
+      kidCode: kCode,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(doc(db, 'families', code), familyData);
-    localStorage.setItem(CODE_KEY, code);
-    familyCodeRef.current = code;
-    setFamilyCode(code);
+
+    // Write family doc + kid-code pointer in parallel
+    await Promise.all([
+      setDoc(doc(db, 'families', parentCode), familyData),
+      setDoc(doc(db, 'familyCodes', kCode), { parentCode }),
+    ]);
+
+    localStorage.setItem(CODE_KEY, parentCode);
+    localStorage.setItem(ACCESS_KEY, 'full');
+    familyCodeRef.current = parentCode;
+    setAccessLevel('full');
+    setFamilyCode(parentCode);
   }, []);
 
+  // ─── Join (works for both parent code and kid code) ──────────────────────
   const joinFamily = useCallback(async (code) => {
-    const snap = await getDoc(doc(db, 'families', code.toUpperCase().trim()));
-    if (!snap.exists()) throw new Error('Family code not found');
-    localStorage.setItem(CODE_KEY, code.toUpperCase().trim());
-    familyCodeRef.current = code.toUpperCase().trim();
-    setFamilyCode(code.toUpperCase().trim());
+    const clean     = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const formatted = `${clean.slice(0, 4)}-${clean.slice(4)}`;
+
+    // Try as parent code first
+    const familySnap = await getDoc(doc(db, 'families', formatted));
+    if (familySnap.exists()) {
+      localStorage.setItem(CODE_KEY, formatted);
+      localStorage.setItem(ACCESS_KEY, 'full');
+      familyCodeRef.current = formatted;
+      setAccessLevel('full');
+      setFamilyCode(formatted);
+      return;
+    }
+
+    // Try as kid code — look up the pointer doc
+    const codeSnap = await getDoc(doc(db, 'familyCodes', formatted));
+    if (codeSnap.exists()) {
+      const { parentCode } = codeSnap.data();
+      localStorage.setItem(CODE_KEY, parentCode);
+      localStorage.setItem(ACCESS_KEY, 'kids-only');
+      familyCodeRef.current = parentCode;
+      setAccessLevel('kids-only');
+      setFamilyCode(parentCode);
+      return;
+    }
+
+    throw new Error('Family code not found');
   }, []);
 
   const resetApp = useCallback(() => {
     localStorage.removeItem(CODE_KEY);
+    localStorage.removeItem(ACCESS_KEY);
     familyCodeRef.current = null;
     setFamilyCode(null);
+    setAccessLevel('full');
     setIsSetup(false);
     setMembers([]);
     setChores([]);
@@ -137,6 +179,7 @@ export function AppProvider({ children }) {
     setRewardClaims([]);
     setActivityFeed([]);
     setCurrentUserId(null);
+    setKidCode(null);
   }, []);
 
   // ─── Members ─────────────────────────────────────────────────────────────
@@ -311,7 +354,8 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      familyCode, isLoading, isSetup, syncError,
+      familyCode, kidCode, accessLevel,
+      isLoading, isSetup, syncError,
       currentUser, currentUserId, setCurrentUserId,
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,

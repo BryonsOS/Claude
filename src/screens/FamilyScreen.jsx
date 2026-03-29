@@ -1,6 +1,50 @@
 import { useState } from 'react';
 import { useApp, PRESET_COLORS } from '../context/AppContext';
 
+function CodeCard({ title, subtitle, code, badgeLabel, badgeColors, onCopy, copied, borderColor, glowColor }) {
+  return (
+    <div
+      className="rounded-3xl p-4 relative overflow-hidden"
+      style={{
+        border: `2px solid ${borderColor}`,
+        background: `linear-gradient(145deg, ${glowColor}18 0%, white 100%)`,
+        boxShadow: `0 4px 20px ${glowColor}20`,
+      }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black mb-1.5"
+            style={{ background: badgeColors.bg, color: badgeColors.text }}
+          >
+            {badgeLabel}
+          </div>
+          <p className="font-black text-gray-900 text-base">{title}</p>
+          <p className="text-xs text-gray-400 mt-0.5 leading-snug">{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div
+          className="flex-1 rounded-2xl px-4 py-3 text-center"
+          style={{ background: `${glowColor}15` }}
+        >
+          <span className="text-2xl font-black tracking-[0.18em]" style={{ color: badgeColors.text }}>
+            {code || '—'}
+          </span>
+        </div>
+        <button
+          onClick={onCopy}
+          className="px-4 py-3 rounded-2xl text-sm font-black text-white flex-shrink-0 active:scale-95 transition-transform shadow-md"
+          style={{ background: badgeColors.text, boxShadow: `0 4px 12px ${glowColor}50` }}
+        >
+          {copied ? '✓ Done' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const PARENT_EMOJIS = ['👩','👨','👩‍🦱','👨‍🦱','👩‍🦰','👨‍🦰','👩‍🦳','👨‍🦳','👵','👴','🧑','🧔'];
 const KID_EMOJIS    = ['👧','👦','🧒','👧🏽','👦🏽','🧒🏽','👧🏿','👦🏿','🧒🏿','👶'];
 
@@ -12,39 +56,58 @@ export default function FamilyScreen() {
 // ─── Parent view ──────────────────────────────────────────────────────────────
 
 function ParentFamilyView() {
-  const { members, chores, familyCode } = useApp();
+  const { members, chores, familyCode, kidCode } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [showReset, setShowReset] = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
+  const [parentCopied, setParentCopied] = useState(false);
+  const [kidCopied, setKidCopied] = useState(false);
 
   const parents = members.filter(m => m.role === 'parent');
   const kids = members.filter(m => m.role === 'child');
 
-  const copyCode = () => {
+  const copyParent = () => {
     navigator.clipboard?.writeText(familyCode).catch(() => {});
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 2000);
+    setParentCopied(true);
+    setTimeout(() => setParentCopied(false), 2000);
+  };
+  const copyKid = () => {
+    navigator.clipboard?.writeText(kidCode).catch(() => {});
+    setKidCopied(true);
+    setTimeout(() => setKidCopied(false), 2000);
   };
 
   return (
     <div className="max-w-lg mx-auto px-4 pb-6 pt-4 space-y-5">
-      {/* Family Code */}
-      {familyCode && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
-          <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-1">Family Code</p>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-3xl font-bold text-indigo-700 tracking-widest">{familyCode}</span>
-            <button onClick={copyCode}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-indigo-500 flex-shrink-0">
-              {codeCopied ? 'Copied! ✓' : 'Copy'}
-            </button>
-          </div>
-          <p className="text-xs text-indigo-400 mt-2">
-            Share this code with family members so they can join on their device.
-          </p>
+
+      {/* Invite Codes */}
+      <div>
+        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Invite Codes</p>
+        <div className="space-y-3">
+          <CodeCard
+            title="Parents & Full Access"
+            subtitle="Share with other parents. Full admin — can assign, approve, and manage everything."
+            code={familyCode}
+            badgeLabel="👑 PARENT CODE"
+            badgeColors={{ bg: '#fef3c7', text: '#d97706' }}
+            borderColor="#fde68a"
+            glowColor="#f59e0b"
+            onCopy={copyParent}
+            copied={parentCopied}
+          />
+          <CodeCard
+            title="Kids Only"
+            subtitle="Share with kids. They can see and complete their chores — but can't approve anything."
+            code={kidCode}
+            badgeLabel="🎮 KID CODE"
+            badgeColors={{ bg: '#d1fae5', text: '#059669' }}
+            borderColor="#a7f3d0"
+            glowColor="#10b981"
+            onCopy={copyKid}
+            copied={kidCopied}
+          />
         </div>
-      )}
+      </div>
       {/* Parents */}
       <section>
         <div className="flex items-center justify-between mb-3">
