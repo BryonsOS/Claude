@@ -406,6 +406,12 @@ export function AppProvider({ children }) {
     syncToFirestore({ rewards: updated });
   }, [rewards, syncToFirestore]);
 
+  const updateReward = useCallback((rewardId, changes) => {
+    const updated = rewards.map(r => r.id === rewardId ? { ...r, ...changes } : r);
+    setRewards(updated);
+    syncToFirestore({ rewards: updated });
+  }, [rewards, syncToFirestore]);
+
   return (
     <AppContext.Provider value={{
       familyCode, kidCode, accessLevel,
@@ -415,7 +421,7 @@ export function AppProvider({ children }) {
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
       completeChore, approveChore, rejectChore, addChore, deleteChore, updateChore,
-      claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward,
+      claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward, updateReward,
     }}>
       {children}
     </AppContext.Provider>

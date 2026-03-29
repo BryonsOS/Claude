@@ -11,7 +11,9 @@ const D = {
 
 export default function RewardsScreen() {
   const { currentUser } = useApp();
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal,    setShowAddModal]    = useState(false);
+  const [editingReward,   setEditingReward]   = useState(null);
+  const [deletingReward,  setDeletingReward]  = useState(null);
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto' }}>
@@ -27,13 +29,17 @@ export default function RewardsScreen() {
         )}
       </div>
 
-      {currentUser.role === 'parent' ? <ParentRewards /> : <KidRewards />}
-      {showAddModal && <AddRewardModal onClose={() => setShowAddModal(false)} />}
+      {currentUser.role === 'parent'
+        ? <ParentRewards onEdit={setEditingReward} onDelete={setDeletingReward} />
+        : <KidRewards />}
+      {showAddModal   && <AddRewardModal onClose={() => setShowAddModal(false)} />}
+      {editingReward  && <EditRewardModal reward={editingReward} onClose={() => setEditingReward(null)} />}
+      {deletingReward && <DeleteRewardConfirm reward={deletingReward} onClose={() => setDeletingReward(null)} />}
     </div>
   );
 }
 
-function ParentRewards() {
+function ParentRewards({ onEdit, onDelete }) {
   const { rewards, rewardClaims, approveRewardClaim, rejectRewardClaim, members } = useApp();
   const pending = rewardClaims.filter(c => c.status === 'pending');
   const history = rewardClaims.filter(c => c.status !== 'pending');
@@ -87,11 +93,15 @@ function ParentRewards() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {rewards.map(r => (
-              <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 18, padding: 16 }}>
+              <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 18, padding: 16, display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>{r.emoji}</span>
-                <p style={{ color: D.textPri, fontWeight: 900, fontSize: 14, margin: '0 0 4px', lineHeight: 1.2 }}>{r.title}</p>
+                <p style={{ color: D.textPri, fontWeight: 900, fontSize: 14, margin: '0 0 4px', lineHeight: 1.2, flex: 1 }}>{r.title}</p>
                 <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 8px', lineHeight: 1.4 }}>{r.description}</p>
-                <span style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', fontSize: 12, fontWeight: 900, padding: '3px 10px', borderRadius: 20 }}>✨ {r.pointCost} pts</span>
+                <span style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', fontSize: 12, fontWeight: 900, padding: '3px 10px', borderRadius: 20, display: 'inline-block', marginBottom: 10 }}>✨ {r.pointCost} pts</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => onEdit(r)} style={{ flex: 1, padding: '8px 0', borderRadius: 12, fontWeight: 700, fontSize: 12, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', cursor: 'pointer' }}>✏️ Edit</button>
+                  <button onClick={() => onDelete(r)} style={{ padding: '8px 10px', borderRadius: 12, fontWeight: 700, fontSize: 12, background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', cursor: 'pointer' }}>🗑</button>
+                </div>
               </div>
             ))}
           </div>
@@ -214,6 +224,62 @@ function KidRewards() {
           <p style={{ color: D.textSec, fontSize: 13 }}>Ask a parent to add some!</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function EditRewardModal({ reward, onClose }) {
+  const { updateReward } = useApp();
+  const EMOJIS = ['🎮', '🍕', '🎬', '🌙', '🍦', '🏖️', '🎁', '🎯', '🛍️', '🎪', '🎠', '🏆'];
+  const [form, setForm] = useState({ title: reward.title, description: reward.description || '', pointCost: reward.pointCost, emoji: reward.emoji });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
+  const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
+        <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 20px' }}>Edit Reward</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Icon</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {EMOJIS.map(e => <button key={e} onClick={() => set('emoji', e)} style={{ width: 46, height: 46, borderRadius: 14, fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: form.emoji === e ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.06)', border: `2px solid ${form.emoji === e ? '#7c3aed' : 'transparent'}`, cursor: 'pointer' }}>{e}</button>)}
+            </div>
+          </div>
+          <div><label style={labelStyle}>Title</label><input autoFocus type="text" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Description</label><input type="text" value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle} /></div>
+          <div>
+            <label style={labelStyle}>Points Required: <span style={{ color: '#a78bfa' }}>{form.pointCost}</span></label>
+            <input type="range" value={form.pointCost} onChange={e => set('pointCost', Number(e.target.value))} min="10" max="300" step="5" style={{ width: '100%', accentColor: '#7c3aed' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>10</span><span>150</span><span>300</span></div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={() => { if (!form.title.trim()) return; updateReward(reward.id, form); onClose(); }} disabled={!form.title.trim()} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #7c3aed, #db2777)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}>
+            Save Changes
+          </button>
+          <button onClick={onClose} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 700, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteRewardConfirm({ reward, onClose }) {
+  const { deleteReward } = useApp();
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div style={{ background: '#1a2234', borderRadius: 24, width: '100%', maxWidth: 360, padding: '28px 24px', border: '1px solid rgba(248,113,113,0.2)' }} onClick={e => e.stopPropagation()}>
+        <p style={{ fontSize: 40, margin: '0 0 12px', textAlign: 'center' }}>{reward.emoji}</p>
+        <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>Remove Reward?</h3>
+        <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}>"{reward.title}" will be removed from the shop.</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => { deleteReward(reward.id); onClose(); }} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: 'linear-gradient(135deg, #dc2626, #b91c1c)', border: 'none', cursor: 'pointer' }}>Remove</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 700, color: D.textSec, fontSize: 15, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </div>
     </div>
   );
 }
