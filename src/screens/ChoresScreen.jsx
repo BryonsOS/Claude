@@ -4,10 +4,10 @@ import { CATEGORY_META } from '../data/initialData';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 
 const STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'pending', label: 'To Do' },
+  { id: 'all',       label: 'All' },
+  { id: 'pending',   label: 'To Do' },
   { id: 'completed', label: 'Review' },
-  { id: 'approved', label: 'Done' },
+  { id: 'approved',  label: 'Done' },
 ];
 
 export default function ChoresScreen() {
@@ -18,34 +18,42 @@ export default function ChoresScreen() {
 
   return (
     <div className="max-w-lg mx-auto">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Chore Board</h2>
-        {currentUser.role === 'parent' && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-full"
-          >
-            + Assign
-          </button>
-        )}
-      </div>
+      {/* Header banner */}
+      <div className="px-4 pt-5 pb-5"
+        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-black text-white">Chore Board</h1>
+            <p className="text-indigo-200 text-sm mt-0.5">
+              {currentUser.role === 'parent' ? 'Manage & approve chores' : 'Your tasks today'}
+            </p>
+          </div>
+          {currentUser.role === 'parent' && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-white text-indigo-600 font-bold px-4 py-2.5 rounded-2xl text-sm shadow-lg"
+            >
+              + Assign
+            </button>
+          )}
+        </div>
 
-      {/* Status Filter */}
-      <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
-        {STATUS_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFilter(tab.id)}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              filter === tab.id
-                ? 'bg-indigo-500 text-white'
-                : 'bg-white text-gray-600 border border-gray-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {/* Filter tabs */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {STATUS_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                filter === tab.id
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-indigo-200 bg-white bg-opacity-15'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <ChoreList filter={filter} onSelectChore={setSelectedChore} />
@@ -71,9 +79,9 @@ function ChoreList({ filter, onSelectChore }) {
   if (filtered.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-        <span className="text-5xl mb-3">✨</span>
-        <p className="font-medium">Nothing here!</p>
-        <p className="text-sm mt-1">
+        <span className="text-6xl mb-3">✨</span>
+        <p className="font-bold text-gray-500 text-lg">Nothing here!</p>
+        <p className="text-sm mt-1 text-gray-400">
           {filter === 'completed' ? 'No chores waiting for review.' : 'All chores are accounted for.'}
         </p>
       </div>
@@ -84,18 +92,21 @@ function ChoreList({ filter, onSelectChore }) {
   if (isParent && filter === 'all') {
     const kids = members.filter(m => m.role === 'child');
     return (
-      <div className="px-4 space-y-4 pb-4">
+      <div className="px-4 pt-4 space-y-5 pb-4">
         {kids.map(kid => {
           const kidChores = filtered.filter(c => c.assignedTo === kid.id);
           if (!kidChores.length) return null;
           return (
             <div key={kid.id}>
-              <div className="flex items-center gap-2 mb-2">
-                <MemberAvatar memberId={kid.id} size="sm" />
-                <span className="font-semibold text-gray-700 text-sm">{kid.name}</span>
-                <span className="text-xs text-gray-400">({kidChores.length})</span>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
+                  style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
+                <span className="font-bold text-gray-800">{kid.name}</span>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {kidChores.length}
+                </span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {kidChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} />)}
               </div>
             </div>
@@ -106,7 +117,7 @@ function ChoreList({ filter, onSelectChore }) {
   }
 
   return (
-    <div className="px-4 space-y-2 pb-4">
+    <div className="px-4 pt-4 space-y-2.5 pb-4">
       {filtered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} />)}
     </div>
   );
@@ -120,41 +131,40 @@ function ChoreCard({ chore, onClick }) {
 
   const statusConfig = {
     pending:   { color: '#6366f1', bg: '#eef2ff', label: 'To Do' },
-    completed: { color: '#f59e0b', bg: '#fffbeb', label: 'Needs Review' },
-    approved:  { color: '#22c55e', bg: '#f0fdf4', label: 'Approved ✓' },
-    rejected:  { color: '#ef4444', bg: '#fef2f2', label: 'Redo' },
+    completed: { color: '#d97706', bg: '#fffbeb', label: 'Needs Review' },
+    approved:  { color: '#16a34a', bg: '#f0fdf4', label: 'Approved ✓' },
+    rejected:  { color: '#dc2626', bg: '#fef2f2', label: 'Redo' },
   };
   const st = statusConfig[chore.status] || statusConfig.pending;
-
   const isOverdue = chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
 
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform"
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform overflow-hidden"
     >
-      <div className="flex items-start gap-3">
-        <div className="rounded-xl p-2 flex-shrink-0" style={{ backgroundColor: cat.bg }}>
-          <span className="text-xl">{cat.emoji}</span>
+      <div className="flex items-center gap-3 px-4 py-4">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+          style={{ backgroundColor: cat.bg }}>
+          {cat.emoji}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-gray-800 text-sm leading-tight">{chore.title}</p>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+            <p className="font-bold text-gray-900 text-base leading-tight">{chore.title}</p>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
               style={{ color: st.color, backgroundColor: st.bg }}>
               {st.label}
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{chore.description}</p>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-indigo-600 font-bold text-xs">+{chore.points} pts</span>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="font-black text-sm" style={{ color: '#6366f1' }}>+{chore.points} pts</span>
             {isParent && (
               <div className="flex items-center gap-1">
                 <MemberAvatar memberId={chore.assignedTo} size="sm" />
                 <MemberName memberId={chore.assignedTo} className="text-xs text-gray-500" />
               </div>
             )}
-            <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+            <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
               {isOverdue ? '⚠️ Overdue' : `📅 ${formatDate(chore.dueDate)}`}
             </span>
           </div>
@@ -162,32 +172,32 @@ function ChoreCard({ chore, onClick }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-3 flex gap-2" onClick={e => e.stopPropagation()}>
+      <div className="px-4 pb-4 flex gap-2" onClick={e => e.stopPropagation()}>
         {!isParent && isMyChore && chore.status === 'pending' && (
           <button
             onClick={() => completeChore(chore.id)}
-            className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
+            className="flex-1 py-3.5 rounded-xl text-sm font-black text-white shadow-sm"
             style={{ backgroundColor: currentUser.color }}
           >
-            Mark Complete ✓
+            Mark Done ✓
           </button>
         )}
         {!isParent && isMyChore && chore.status === 'completed' && (
-          <div className="flex-1 py-3 rounded-xl text-sm font-medium text-amber-600 text-center bg-amber-50">
-            ⏳ Waiting for parent approval
+          <div className="flex-1 py-3.5 rounded-xl text-sm font-bold text-amber-700 text-center bg-amber-50 border border-amber-100">
+            ⏳ Waiting for parent
           </div>
         )}
         {isParent && chore.status === 'completed' && (
           <>
             <button
               onClick={() => approveChore(chore.id)}
-              className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-green-500"
+              className="flex-1 py-3.5 rounded-xl text-sm font-black text-white bg-green-500"
             >
               Approve ✓
             </button>
             <button
-              onClick={() => {}} // opens detail for rejection reason
-              className="px-4 py-3 rounded-xl text-sm font-bold text-red-500 bg-red-50"
+              onClick={e => { e.stopPropagation(); }}
+              className="px-5 py-3.5 rounded-xl text-sm font-black text-red-500 bg-red-50"
             >
               Reject
             </button>
@@ -212,30 +222,31 @@ function ChoreDetailModal({ chore, onClose }) {
 
   const statusConfig = {
     pending:   { color: '#6366f1', label: 'To Do' },
-    completed: { color: '#f59e0b', label: 'Needs Review' },
-    approved:  { color: '#22c55e', label: 'Approved' },
-    rejected:  { color: '#ef4444', label: 'Needs Redo' },
+    completed: { color: '#d97706', label: 'Needs Review' },
+    approved:  { color: '#16a34a', label: 'Approved' },
+    rejected:  { color: '#dc2626', label: 'Needs Redo' },
   };
   const st = statusConfig[chore.status] || statusConfig.pending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40"
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50"
       onClick={onClose}>
-      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-8"
+      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10"
         onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="rounded-2xl p-3" style={{ backgroundColor: cat.bg }}>
-            <span className="text-3xl">{cat.emoji}</span>
-          </div>
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+            style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800">{chore.title}</h3>
-            <span className="text-sm font-medium" style={{ color: st.color }}>{st.label}</span>
+            <h3 className="text-xl font-black text-gray-900">{chore.title}</h3>
+            <span className="text-sm font-bold" style={{ color: st.color }}>{st.label}</span>
           </div>
         </div>
 
-        <p className="text-gray-600 text-sm mb-4">{chore.description}</p>
+        {chore.description && (
+          <p className="text-gray-600 text-sm mb-4 bg-gray-50 rounded-xl p-3">{chore.description}</p>
+        )}
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           <InfoTile label="Points" value={`✨ ${chore.points}`} />
@@ -248,13 +259,13 @@ function ChoreDetailModal({ chore, onClose }) {
           <div className="flex gap-3">
             <button
               onClick={() => { approveChore(chore.id); onClose(); }}
-              className="flex-1 py-3 rounded-2xl font-bold text-white bg-green-500"
+              className="flex-1 py-4 rounded-2xl font-black text-white bg-green-500 text-base"
             >
               Approve ✓
             </button>
             <button
               onClick={() => setShowReject(true)}
-              className="flex-1 py-3 rounded-2xl font-bold text-red-500 bg-red-50"
+              className="flex-1 py-4 rounded-2xl font-black text-red-500 bg-red-50 text-base"
             >
               Send Back
             </button>
@@ -271,10 +282,12 @@ function ChoreDetailModal({ chore, onClose }) {
               rows={3}
             />
             <div className="flex gap-3">
-              <button onClick={handleReject} className="flex-1 py-3 rounded-2xl font-bold text-white bg-red-500">
+              <button onClick={handleReject}
+                className="flex-1 py-4 rounded-2xl font-black text-white bg-red-500">
                 Send Back
               </button>
-              <button onClick={() => setShowReject(false)} className="flex-1 py-3 rounded-2xl font-bold text-gray-500 bg-gray-100">
+              <button onClick={() => setShowReject(false)}
+                className="flex-1 py-4 rounded-2xl font-black text-gray-500 bg-gray-100">
                 Cancel
               </button>
             </div>
@@ -284,7 +297,7 @@ function ChoreDetailModal({ chore, onClose }) {
         {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
           <button
             onClick={() => { completeChore(chore.id); onClose(); }}
-            className="w-full py-3 rounded-2xl font-bold text-white"
+            className="w-full py-4 rounded-2xl font-black text-white text-base"
             style={{ backgroundColor: currentUser.color }}
           >
             Mark as Complete ✓
@@ -292,8 +305,8 @@ function ChoreDetailModal({ chore, onClose }) {
         )}
 
         {chore.rejectionReason && (
-          <div className="mt-3 p-3 bg-red-50 rounded-xl">
-            <p className="text-xs font-semibold text-red-600 mb-1">Parent's note:</p>
+          <div className="mt-3 p-4 bg-red-50 rounded-2xl border border-red-100">
+            <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-1">Parent's note:</p>
             <p className="text-sm text-red-700">{chore.rejectionReason}</p>
           </div>
         )}
@@ -305,14 +318,14 @@ function ChoreDetailModal({ chore, onClose }) {
 function InfoTile({ label, value }) {
   return (
     <div className="bg-gray-50 rounded-xl p-3">
-      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-      <p className="text-sm font-semibold text-gray-700">{value}</p>
+      <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-gray-800">{value}</p>
     </div>
   );
 }
 
 function AddChoreModal({ onClose }) {
-  const { members, addChore, currentUserId } = useApp();
+  const { members, addChore } = useApp();
   const kids = members.filter(m => m.role === 'child');
   const today = new Date().toISOString().split('T')[0];
 
@@ -335,21 +348,22 @@ function AddChoreModal({ onClose }) {
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40"
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50"
       onClick={onClose}>
-      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-8 overflow-y-auto max-h-[85vh]"
+      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10 overflow-y-auto max-h-[90vh]"
         onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Assign a Chore</h3>
+        <h3 className="text-xl font-black text-gray-900 mb-5">Assign a Chore</h3>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           <Field label="Chore Title">
             <input
               type="text"
               value={form.title}
               onChange={e => set('title', e.target.value)}
               placeholder="e.g. Wash Dishes"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-base font-medium focus:outline-none focus:border-indigo-300"
+              autoFocus
             />
           </Field>
 
@@ -358,7 +372,7 @@ function AddChoreModal({ onClose }) {
               value={form.description}
               onChange={e => set('description', e.target.value)}
               placeholder="What needs to be done..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-indigo-300"
               rows={2}
             />
           </Field>
@@ -369,14 +383,14 @@ function AddChoreModal({ onClose }) {
                 <button
                   key={kid.id}
                   onClick={() => set('assignedTo', kid.id)}
-                  className="flex-1 flex flex-col items-center p-2.5 rounded-xl border-2 transition-all"
+                  className="flex-1 flex flex-col items-center py-3 px-2 rounded-2xl border-2 transition-all"
                   style={{
                     borderColor: form.assignedTo === kid.id ? kid.color : '#e5e7eb',
-                    backgroundColor: form.assignedTo === kid.id ? kid.bgColor : 'white',
+                    backgroundColor: form.assignedTo === kid.id ? kid.bg : 'white',
                   }}
                 >
-                  <span className="text-xl">{kid.emoji}</span>
-                  <span className="text-xs font-medium mt-0.5" style={{ color: form.assignedTo === kid.id ? kid.color : '#6b7280' }}>
+                  <span className="text-2xl">{kid.emoji}</span>
+                  <span className="text-xs font-bold mt-1" style={{ color: form.assignedTo === kid.id ? kid.color : '#6b7280' }}>
                     {kid.name}
                   </span>
                 </button>
@@ -391,7 +405,7 @@ function AddChoreModal({ onClose }) {
                 value={form.points}
                 onChange={e => set('points', Number(e.target.value))}
                 min="5" max="100"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-base font-bold focus:outline-none focus:border-indigo-300"
               />
             </Field>
             <Field label="Due Date">
@@ -399,7 +413,7 @@ function AddChoreModal({ onClose }) {
                 type="date"
                 value={form.dueDate}
                 onChange={e => set('dueDate', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+                className="w-full border-2 border-gray-100 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-300"
               />
             </Field>
           </div>
@@ -410,10 +424,10 @@ function AddChoreModal({ onClose }) {
                 <button
                   key={r}
                   onClick={() => set('recurrence', r)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize border transition-all ${
+                  className={`flex-1 py-3 rounded-xl text-sm font-bold capitalize border-2 transition-all ${
                     form.recurrence === r
                       ? 'bg-indigo-500 text-white border-indigo-500'
-                      : 'bg-white text-gray-600 border-gray-200'
+                      : 'bg-white text-gray-600 border-gray-100'
                   }`}
                 >
                   {r}
@@ -428,14 +442,14 @@ function AddChoreModal({ onClose }) {
                 <button
                   key={key}
                   onClick={() => set('category', key)}
-                  className="flex flex-col items-center py-2 px-1 rounded-xl border transition-all"
+                  className="flex flex-col items-center py-3 px-1 rounded-2xl border-2 transition-all"
                   style={{
-                    borderColor: form.category === key ? meta.color : '#e5e7eb',
+                    borderColor: form.category === key ? meta.color : '#f3f4f6',
                     backgroundColor: form.category === key ? meta.bg : 'white',
                   }}
                 >
-                  <span className="text-lg">{meta.emoji}</span>
-                  <span className="text-xs mt-0.5" style={{ color: form.category === key ? meta.color : '#9ca3af' }}>
+                  <span className="text-2xl">{meta.emoji}</span>
+                  <span className="text-xs font-bold mt-1" style={{ color: form.category === key ? meta.color : '#9ca3af' }}>
                     {meta.label}
                   </span>
                 </button>
@@ -447,7 +461,7 @@ function AddChoreModal({ onClose }) {
         <button
           onClick={handleSubmit}
           disabled={!form.title.trim()}
-          className="w-full mt-5 py-3.5 rounded-2xl font-bold text-white bg-indigo-500 disabled:opacity-40"
+          className="w-full mt-6 py-4 rounded-2xl font-black text-white text-base bg-indigo-500 disabled:opacity-40 shadow-lg"
         >
           Assign Chore
         </button>
@@ -459,7 +473,7 @@ function AddChoreModal({ onClose }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
         {label}
       </label>
       {children}

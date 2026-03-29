@@ -1,6 +1,7 @@
 import { useApp } from '../context/AppContext';
 import { CATEGORY_META } from '../data/initialData';
-import { MemberAvatar } from '../components/MemberAvatar';
+
+const today = () => new Date().toISOString().split('T')[0];
 
 export default function HomeScreen({ setActiveTab }) {
   const { currentUser } = useApp();
@@ -12,150 +13,183 @@ export default function HomeScreen({ setActiveTab }) {
 // ─── Parent Home ──────────────────────────────────────────────────────────────
 
 function ParentHome({ setActiveTab }) {
-  const { members, chores, rewardClaims } = useApp();
+  const { members, chores, rewardClaims, currentUser } = useApp();
   const kids = members.filter(m => m.role === 'child');
   const pendingApprovals = chores.filter(c => c.status === 'completed');
-  const pendingRewards = rewardClaims.filter(c => c.status === 'pending');
-  const todayChores = chores.filter(c => c.dueDate === new Date().toISOString().split('T')[0]);
-  const doneToday = todayChores.filter(c => c.status === 'approved').length;
+  const pendingRewards   = rewardClaims.filter(c => c.status === 'pending');
+  const todayChores = chores.filter(c => c.dueDate === today());
+  const doneToday   = todayChores.filter(c => c.status === 'approved').length;
+  const totalToday  = todayChores.length;
+  const pct = totalToday ? Math.round((doneToday / totalToday) * 100) : 0;
+  const needsAction = pendingApprovals.length + pendingRewards.length;
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-5">
-      {/* Greeting */}
-      <div className="pt-2">
-        <h2 className="text-2xl font-bold text-gray-800">Good morning! 👋</h2>
-        <p className="text-gray-500 text-sm mt-1">Here's what your family is up to today.</p>
+    <div className="max-w-lg mx-auto pb-6">
+      {/* Header banner */}
+      <div className="px-4 pt-5 pb-6"
+        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
+        <p className="text-indigo-200 text-sm font-medium">Hi, {currentUser.name} 👋</p>
+        <h1 className="text-3xl font-black text-white mt-0.5">Family Overview</h1>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <StatBadge value={totalToday} label="Today" sublabel="chores" color="white" />
+          <StatBadge value={`${pct}%`} label="Done" sublabel="today" color="white" />
+          <StatBadge value={needsAction} label="Action" sublabel="needed" color={needsAction > 0 ? '#fbbf24' : 'white'} />
+        </div>
       </div>
 
-      {/* Pending Approvals Banner */}
-      {(pendingApprovals.length > 0 || pendingRewards.length > 0) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">⏳</span>
-            <span className="font-semibold text-amber-800">Needs Your Attention</span>
+      <div className="px-4 space-y-4 -mt-3">
+        {/* Needs attention */}
+        {needsAction > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2"
+              style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316)' }}>
+              <span className="text-white text-lg">⚡</span>
+              <span className="text-white font-bold">Needs your approval</span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {pendingApprovals.map(c => (
+                <ApprovalRow key={c.id} chore={c} onTap={() => setActiveTab('chores')} />
+              ))}
+              {pendingRewards.map(cl => (
+                <RewardRow key={cl.id} claim={cl} onTap={() => setActiveTab('rewards')} />
+              ))}
+            </div>
           </div>
-          {pendingApprovals.length > 0 && (
-            <button onClick={() => setActiveTab('chores')} className="w-full text-left">
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-sm text-amber-700">✅ {pendingApprovals.length} chore{pendingApprovals.length > 1 ? 's' : ''} to approve</span>
-                <span className="text-amber-500 text-xs">→</span>
+        )}
+
+        {/* Kids cards */}
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Kids</p>
+          <div className="space-y-3">
+            {kids.map(kid => <KidCard key={kid.id} kid={kid} chores={chores} onTap={() => setActiveTab('chores')} />)}
+            {kids.length === 0 && (
+              <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+                <p className="text-gray-400 text-sm">No kids added yet — go to the Family tab to add them.</p>
               </div>
-            </button>
-          )}
-          {pendingRewards.length > 0 && (
-            <button onClick={() => setActiveTab('rewards')} className="w-full text-left">
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-sm text-amber-700">🎁 {pendingRewards.length} reward claim{pendingRewards.length > 1 ? 's' : ''} waiting</span>
-                <span className="text-amber-500 text-xs">→</span>
-              </div>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Today's Progress */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="flex justify-between items-center mb-3">
-          <span className="font-semibold text-gray-700">Today's Chores</span>
-          <span className="text-sm text-gray-400">{doneToday}/{todayChores.length} done</span>
-        </div>
-        <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
-          <div
-            className="h-2 rounded-full transition-all"
-            style={{
-              width: `${todayChores.length ? (doneToday / todayChores.length) * 100 : 0}%`,
-              background: 'linear-gradient(90deg, #818cf8, #6366f1)',
-            }}
-          />
-        </div>
-        <div className="space-y-2">
-          {todayChores.slice(0, 4).map(chore => (
-            <ChoreRow key={chore.id} chore={chore} />
-          ))}
-          {todayChores.length > 4 && (
-            <button onClick={() => setActiveTab('chores')} className="text-indigo-500 text-sm font-medium">
-              +{todayChores.length - 4} more →
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Kids Overview */}
-      <div>
-        <div className="flex justify-between items-center mb-3">
-          <span className="font-semibold text-gray-700">Kids Overview</span>
-        </div>
-        <div className="space-y-3">
-          {kids.map(kid => <KidCard key={kid.id} kid={kid} chores={chores} />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChoreRow({ chore }) {
-  const { members } = useApp();
-  const assignee = members.find(m => m.id === chore.assignedTo);
-  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-
-  const statusConfig = {
-    pending: { color: '#9ca3af', label: 'To Do', bg: '#f3f4f6' },
-    completed: { color: '#f59e0b', label: 'Review', bg: '#fffbeb' },
-    approved: { color: '#22c55e', label: 'Done', bg: '#f0fdf4' },
-    rejected: { color: '#ef4444', label: 'Redo', bg: '#fef2f2' },
-  };
-  const st = statusConfig[chore.status] || statusConfig.pending;
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-base">{cat.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-700 truncate">{chore.title}</p>
-        <p className="text-xs text-gray-400">{assignee?.name}</p>
-      </div>
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-        style={{ color: st.color, backgroundColor: st.bg }}>
-        {st.label}
-      </span>
-    </div>
-  );
-}
-
-function KidCard({ kid, chores }) {
-  const myChores = chores.filter(c => c.assignedTo === kid.id);
-  const done = myChores.filter(c => c.status === 'approved').length;
-  const needsReview = myChores.filter(c => c.status === 'completed').length;
-
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <div className="flex items-center gap-3">
-        <MemberAvatar memberId={kid.id} size="lg" />
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-gray-800">{kid.name}</span>
-            <span className="text-indigo-600 font-bold text-sm">✨ {kid.points} pts</span>
-          </div>
-          <div className="flex gap-3 mt-1">
-            <span className="text-xs text-gray-500">{done}/{myChores.length} done today</span>
-            {needsReview > 0 && (
-              <span className="text-xs font-medium text-amber-600">⏳ {needsReview} review</span>
             )}
           </div>
         </div>
+
+        {/* Today's chore list */}
+        {todayChores.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Today's Chores</p>
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {todayChores.slice(0, 5).map((c, i) => (
+                <ChoreRow key={c.id} chore={c} last={i === Math.min(todayChores.length, 5) - 1} />
+              ))}
+              {todayChores.length > 5 && (
+                <button onClick={() => setActiveTab('chores')}
+                  className="w-full py-3 text-center text-indigo-500 font-semibold text-sm border-t border-gray-50">
+                  See all {todayChores.length} chores →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-      {myChores.length > 0 && (
-        <div className="mt-3">
-          <div className="w-full bg-gray-100 rounded-full h-1.5">
-            <div
-              className="h-1.5 rounded-full"
-              style={{
-                width: `${myChores.length ? (done / myChores.length) * 100 : 0}%`,
-                backgroundColor: kid.color,
-              }}
-            />
+    </div>
+  );
+}
+
+function StatBadge({ value, label, sublabel, color }) {
+  return (
+    <div className="bg-white bg-opacity-15 rounded-2xl p-3 text-center">
+      <p className="text-2xl font-black" style={{ color }}>{value}</p>
+      <p className="text-white text-xs font-semibold">{label}</p>
+      <p className="text-indigo-200 text-xs">{sublabel}</p>
+    </div>
+  );
+}
+
+function ApprovalRow({ chore, onTap }) {
+  const { members } = useApp();
+  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const kid = members.find(m => m.id === chore.assignedTo);
+  return (
+    <button onClick={onTap} className="w-full flex items-center gap-3 px-4 py-3">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+        style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
+      <div className="flex-1 text-left">
+        <p className="font-semibold text-gray-800 text-sm">{chore.title}</p>
+        <p className="text-xs text-gray-400">{kid?.name} · +{chore.points} pts</p>
+      </div>
+      <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">Review</span>
+    </button>
+  );
+}
+
+function RewardRow({ claim, onTap }) {
+  const { members, rewards } = useApp();
+  const kid    = members.find(m => m.id === claim.claimedBy);
+  const reward = rewards.find(r => r.id === claim.rewardId);
+  if (!reward) return null;
+  return (
+    <button onClick={onTap} className="w-full flex items-center gap-3 px-4 py-3">
+      <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-lg flex-shrink-0">
+        {reward.emoji}
+      </div>
+      <div className="flex-1 text-left">
+        <p className="font-semibold text-gray-800 text-sm">{reward.title}</p>
+        <p className="text-xs text-gray-400">{kid?.name} · {reward.pointCost} pts</p>
+      </div>
+      <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">Claim</span>
+    </button>
+  );
+}
+
+function KidCard({ kid, chores, onTap }) {
+  const myChores = chores.filter(c => c.assignedTo === kid.id);
+  const done     = myChores.filter(c => c.status === 'approved').length;
+  const review   = myChores.filter(c => c.status === 'completed').length;
+  const pct      = myChores.length ? Math.round((done / myChores.length) * 100) : 0;
+
+  return (
+    <button onClick={onTap} className="w-full bg-white rounded-2xl p-4 shadow-sm text-left">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+          style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
+        <div className="flex-1">
+          <div className="flex justify-between items-center">
+            <p className="font-bold text-gray-900 text-base">{kid.name}</p>
+            <p className="font-black text-lg" style={{ color: kid.color }}>✨ {kid.points}</p>
+          </div>
+          <div className="flex gap-3 mt-0.5">
+            <span className="text-xs text-gray-500">{done}/{myChores.length} done</span>
+            {review > 0 && <span className="text-xs font-bold text-amber-500">⚡ {review} to review</span>}
           </div>
         </div>
-      )}
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2.5">
+        <div className="h-2.5 rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: kid.color }} />
+      </div>
+    </button>
+  );
+}
+
+function ChoreRow({ chore, last }) {
+  const { members } = useApp();
+  const cat      = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const assignee = members.find(m => m.id === chore.assignedTo);
+  const status   = {
+    pending:   { label: 'To Do',   color: '#6366f1', bg: '#eef2ff' },
+    completed: { label: 'Review',  color: '#f59e0b', bg: '#fffbeb' },
+    approved:  { label: 'Done ✓',  color: '#22c55e', bg: '#f0fdf4' },
+    rejected:  { label: 'Redo',    color: '#ef4444', bg: '#fef2f2' },
+  }[chore.status] || { label: 'To Do', color: '#6366f1', bg: '#eef2ff' };
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 ${!last ? 'border-b border-gray-50' : ''}`}>
+      <span className="text-lg">{cat.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-800 truncate">{chore.title}</p>
+        <p className="text-xs text-gray-400">{assignee?.name}</p>
+      </div>
+      <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+        style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span>
     </div>
   );
 }
@@ -163,140 +197,151 @@ function KidCard({ kid, chores }) {
 // ─── Kid Home ─────────────────────────────────────────────────────────────────
 
 function KidHome({ setActiveTab }) {
-  const { currentUser, chores, rewards, rewardClaims, completeChore } = useApp();
-  const myChores = chores.filter(c => c.assignedTo === currentUser.id);
-  const todayChores = myChores.filter(c => c.dueDate === new Date().toISOString().split('T')[0]);
-  const pendingChores = todayChores.filter(c => c.status === 'pending');
-  const doneChores = todayChores.filter(c => c.status === 'approved' || c.status === 'completed');
-  const canAfford = rewards.filter(r => r.pointCost <= currentUser.points);
-
-  // Calculate streak (simplified: consecutive days with all approved chores)
-  const streak = calculateStreak(myChores);
+  const { currentUser, chores, rewards, completeChore } = useApp();
+  const myChores     = chores.filter(c => c.assignedTo === currentUser.id);
+  const todayChores  = myChores.filter(c => c.dueDate === today());
+  const pending      = todayChores.filter(c => c.status === 'pending');
+  const done         = todayChores.filter(c => c.status === 'approved').length;
+  const waiting      = todayChores.filter(c => c.status === 'completed').length;
+  const canAfford    = rewards.filter(r => r.pointCost <= currentUser.points);
+  const streak       = calcStreak(myChores);
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-5">
-      {/* Kid Hero Card */}
-      <div
-        className="rounded-3xl p-5 text-white relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${currentUser.color} 0%, ${currentUser.color}cc 100%)` }}
-      >
+    <div className="max-w-lg mx-auto pb-6">
+      {/* Hero */}
+      <div className="relative overflow-hidden px-4 pt-5 pb-8"
+        style={{ background: `linear-gradient(135deg, ${currentUser.color} 0%, ${currentUser.color}bb 100%)` }}>
+        <div className="absolute -right-6 -top-6 w-32 h-32 bg-white opacity-10 rounded-full" />
+        <div className="absolute right-4 -bottom-8 w-24 h-24 bg-white opacity-5 rounded-full" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-white bg-opacity-20 rounded-full w-14 h-14 flex items-center justify-center text-3xl">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-16 h-16 rounded-2xl bg-white bg-opacity-20 flex items-center justify-center text-4xl">
               {currentUser.emoji}
             </div>
             <div>
-              <p className="text-white text-opacity-80 text-sm">Welcome back,</p>
-              <h2 className="text-2xl font-bold">{currentUser.name}!</h2>
+              <p className="text-white text-opacity-75 text-sm">Hey there,</p>
+              <h1 className="text-3xl font-black text-white">{currentUser.name}!</h1>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <StatPill label="Points" value={`✨ ${currentUser.points}`} />
-            <StatPill label="Streak" value={`🔥 ${streak}d`} />
-            <StatPill label="Today" value={`${doneChores.length}/${todayChores.length}`} />
+          <div className="grid grid-cols-3 gap-2">
+            <HeroStat label="Points" value={currentUser.points} icon="✨" />
+            <HeroStat label="Streak" value={`${streak}d`} icon="🔥" />
+            <HeroStat label="Today" value={`${done}/${todayChores.length}`} icon="✅" />
           </div>
         </div>
-        <div className="absolute -right-8 -top-8 w-32 h-32 bg-white bg-opacity-10 rounded-full" />
-        <div className="absolute -right-4 -bottom-6 w-20 h-20 bg-white bg-opacity-5 rounded-full" />
       </div>
 
-      {/* Today's To-Do */}
-      {pendingChores.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-3">
-            <span className="font-semibold text-gray-700">Today's To-Do</span>
-            <span className="text-xs text-gray-400">{pendingChores.length} left</span>
+      <div className="px-4 space-y-4 -mt-2">
+        {/* All done banner */}
+        {pending.length === 0 && todayChores.length > 0 && (
+          <div className="bg-green-500 rounded-2xl p-4 text-center shadow-lg">
+            <p className="text-3xl mb-1">🎉</p>
+            <p className="font-black text-white text-lg">All done today!</p>
+            {waiting > 0 && <p className="text-green-100 text-sm mt-0.5">{waiting} chore{waiting > 1 ? 's' : ''} waiting for approval</p>}
           </div>
-          <div className="space-y-2">
-            {pendingChores.map(chore => (
-              <KidChoreCard key={chore.id} chore={chore} onComplete={() => completeChore(chore.id)} color={currentUser.color} />
-            ))}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* All Done! */}
-      {pendingChores.length === 0 && todayChores.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-          <div className="text-4xl mb-2">🎉</div>
-          <p className="font-semibold text-green-800">All done for today!</p>
-          <p className="text-sm text-green-600 mt-1">Waiting for parent approval on some chores.</p>
-        </div>
-      )}
+        {/* Pending chores */}
+        {pending.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+              To Do Today · {pending.length} left
+            </p>
+            <div className="space-y-2.5">
+              {pending.map(chore => (
+                <BigChoreCard
+                  key={chore.id}
+                  chore={chore}
+                  onComplete={() => completeChore(chore.id)}
+                  color={currentUser.color}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* Rewards you can afford */}
-      {canAfford.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-3">
-            <span className="font-semibold text-gray-700">Rewards You Can Get 🎁</span>
-            <button onClick={() => setActiveTab('rewards')} className="text-indigo-500 text-xs font-medium">See all →</button>
+        {/* Waiting for approval */}
+        {waiting > 0 && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Waiting for Approval</p>
+            <div className="space-y-2">
+              {todayChores.filter(c => c.status === 'completed').map(chore => {
+                const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+                return (
+                  <div key={chore.id} className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl">{cat.emoji}</span>
+                    <p className="flex-1 font-semibold text-amber-800 text-sm">{chore.title}</p>
+                    <span className="text-xs text-amber-500 font-bold">⏳ Pending</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-            {canAfford.slice(0, 4).map(reward => (
-              <MiniRewardCard key={reward.id} reward={reward} />
-            ))}
+        )}
+
+        {/* Affordable rewards */}
+        {canAfford.length > 0 && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Rewards You Can Get</p>
+              <button onClick={() => setActiveTab('rewards')} className="text-indigo-500 text-xs font-bold">See all</button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {canAfford.slice(0, 5).map(r => (
+                <div key={r.id} className="flex-shrink-0 w-28 bg-white rounded-2xl shadow-sm p-3 text-center border border-gray-100">
+                  <span className="text-3xl">{r.emoji}</span>
+                  <p className="text-xs font-bold text-gray-700 mt-1.5 leading-tight line-clamp-2">{r.title}</p>
+                  <p className="text-indigo-600 font-black text-sm mt-1">✨ {r.pointCost}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-function StatPill({ label, value }) {
+function HeroStat({ label, value, icon }) {
   return (
-    <div className="bg-white bg-opacity-20 rounded-2xl p-2.5 text-center">
-      <p className="text-white font-bold text-sm">{value}</p>
-      <p className="text-white text-opacity-70 text-xs">{label}</p>
+    <div className="bg-white bg-opacity-20 rounded-2xl p-3 text-center">
+      <p className="text-white text-opacity-70 text-xs mb-0.5">{label}</p>
+      <p className="text-white font-black text-xl leading-none">{icon} {value}</p>
     </div>
   );
 }
 
-function KidChoreCard({ chore, onComplete, color }) {
+function BigChoreCard({ chore, onComplete, color }) {
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
-      <div className="text-xl w-8 text-center">{cat.emoji}</div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-gray-800 truncate">{chore.title}</p>
-        <p className="text-xs text-gray-400">+{chore.points} pts</p>
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex">
+      <div className="w-1.5 flex-shrink-0" style={{ backgroundColor: color }} />
+      <div className="flex items-center gap-3 flex-1 px-4 py-4">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+          style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-900">{chore.title}</p>
+          <p className="text-xs text-gray-400 mt-0.5">+{chore.points} pts</p>
+        </div>
+        <button onClick={onComplete}
+          className="px-4 py-2.5 rounded-xl font-bold text-white text-sm flex-shrink-0"
+          style={{ backgroundColor: color }}>
+          Done ✓
+        </button>
       </div>
-      <button
-        onClick={onComplete}
-        className="px-3 py-1.5 rounded-xl text-xs font-bold text-white flex-shrink-0"
-        style={{ backgroundColor: color }}
-      >
-        Done ✓
-      </button>
     </div>
   );
 }
 
-function MiniRewardCard({ reward }) {
-  return (
-    <div className="flex-shrink-0 bg-indigo-50 rounded-2xl p-3 w-28 text-center border border-indigo-100">
-      <span className="text-2xl">{reward.emoji}</span>
-      <p className="text-xs font-semibold text-gray-700 mt-1 leading-tight line-clamp-2">{reward.title}</p>
-      <p className="text-indigo-600 font-bold text-xs mt-1">✨ {reward.pointCost}</p>
-    </div>
-  );
-}
-
-function calculateStreak(chores) {
-  // Simplified streak: count days in a row with at least one approved chore
+function calcStreak(chores) {
   if (!chores.length) return 0;
-  const approvedDates = new Set(
-    chores
-      .filter(c => c.status === 'approved' && c.approvedAt)
-      .map(c => c.approvedAt.split('T')[0])
-  );
-  let streak = 0;
-  const today = new Date();
+  const dates = new Set(chores.filter(c => c.status === 'approved' && c.approvedAt).map(c => c.approvedAt.split('T')[0]));
+  let s = 0;
   for (let i = 0; i < 30; i++) {
-    const d = new Date(today);
+    const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    if (approvedDates.has(dateStr)) streak++;
+    if (dates.has(d.toISOString().split('T')[0])) s++;
     else if (i > 0) break;
   }
-  return streak;
+  return s;
 }

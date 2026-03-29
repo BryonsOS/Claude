@@ -3,15 +3,21 @@ import { MemberAvatar } from '../components/MemberAvatar';
 import { CATEGORY_META } from '../data/initialData';
 
 export default function FeedScreen() {
-  const { activityFeed, members, chores, rewards } = useApp();
+  const { activityFeed } = useApp();
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Family Feed</h2>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-          Live updates 🟢
-        </span>
+      {/* Header */}
+      <div className="px-4 pt-5 pb-5 flex items-center justify-between"
+        style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)' }}>
+        <div>
+          <h1 className="text-2xl font-black text-white">Family Feed</h1>
+          <p className="text-blue-100 text-sm mt-0.5">Everything happening in real time</p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-white bg-opacity-20 px-3 py-1.5 rounded-xl">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-white text-xs font-bold">Live</span>
+        </div>
       </div>
 
       {/* Family Scoreboard */}
@@ -19,11 +25,12 @@ export default function FeedScreen() {
 
       {/* Activity Feed */}
       <div className="px-4 pb-4 space-y-3">
-        <h3 className="font-semibold text-gray-700 text-sm">Recent Activity</h3>
+        <h3 className="font-black text-gray-900 text-base">Recent Activity</h3>
         {activityFeed.length === 0 ? (
-          <div className="text-center py-10 text-gray-400">
-            <span className="text-4xl">📢</span>
-            <p className="mt-2 text-sm">No activity yet. Get to work! 😄</p>
+          <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
+            <span className="text-5xl">📢</span>
+            <p className="mt-3 font-bold text-gray-500">No activity yet.</p>
+            <p className="text-sm text-gray-400 mt-1">Get the kids started on some chores!</p>
           </div>
         ) : (
           activityFeed.map(entry => (
@@ -40,28 +47,33 @@ function FamilyScoreboard() {
   const kids = members.filter(m => m.role === 'child').sort((a, b) => b.points - a.points);
   const topPoints = kids[0]?.points || 1;
 
+  if (kids.length === 0) return null;
+
+  const medals = ['🥇', '🥈', '🥉'];
+
   return (
-    <div className="mx-4 mb-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-        <span>🏆</span> This Week's Leaderboard
-      </h3>
-      <div className="space-y-3">
+    <div className="mx-4 my-4 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2"
+        style={{ background: 'linear-gradient(90deg, #fbbf24, #f59e0b)' }}>
+        <span className="text-xl">🏆</span>
+        <span className="font-black text-white text-base">Leaderboard</span>
+      </div>
+      <div className="px-4 py-3 space-y-3">
         {kids.map((kid, i) => (
           <div key={kid.id} className="flex items-center gap-3">
-            <span className="text-sm font-bold w-5 text-gray-400">
-              {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-            </span>
-            <MemberAvatar memberId={kid.id} size="md" />
-            <div className="flex-1">
+            <span className="text-xl w-7 flex-shrink-0">{medals[i] || `${i + 1}.`}</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+              style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
+            <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-semibold text-gray-800">{kid.name}</span>
-                <span className="text-indigo-600 font-bold text-sm">✨ {kid.points}</span>
+                <span className="font-bold text-gray-900">{kid.name}</span>
+                <span className="font-black text-sm" style={{ color: kid.color }}>✨ {kid.points}</span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
+              <div className="w-full bg-gray-100 rounded-full h-2.5">
                 <div
-                  className="h-2 rounded-full transition-all"
+                  className="h-2.5 rounded-full transition-all"
                   style={{
-                    width: `${(kid.points / topPoints) * 100}%`,
+                    width: `${Math.max((kid.points / Math.max(topPoints, 1)) * 100, 4)}%`,
                     backgroundColor: kid.color,
                   }}
                 />
@@ -92,7 +104,7 @@ function ActivityEntry({ entry }) {
       message: () => (
         <span>
           <Strong name={actor.name} color={actor.color} /> marked{' '}
-          <em className="not-italic font-semibold text-gray-700">"{chore?.title}"</em>{' '}
+          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
           as complete {cat?.emoji}
         </span>
       ),
@@ -105,8 +117,8 @@ function ActivityEntry({ entry }) {
         <span>
           <Strong name={actor.name} color={actor.color} /> approved{' '}
           <Strong name={target?.name} color={target?.color} />'s{' '}
-          <em className="not-italic font-semibold text-gray-700">"{chore?.title}"</em>{' '}
-          +{chore?.points}✨
+          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
+          <span className="font-black text-indigo-600">+{chore?.points}✨</span>
         </span>
       ),
     },
@@ -117,7 +129,7 @@ function ActivityEntry({ entry }) {
       message: () => (
         <span>
           <Strong name={actor.name} color={actor.color} /> sent back{' '}
-          <em className="not-italic font-semibold text-gray-700">"{chore?.title}"</em>{' '}
+          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
           for a redo
         </span>
       ),
@@ -129,7 +141,7 @@ function ActivityEntry({ entry }) {
       message: () => (
         <span>
           <Strong name={actor.name} color={actor.color} /> assigned{' '}
-          <em className="not-italic font-semibold text-gray-700">"{chore?.title}"</em>{' '}
+          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
           to <Strong name={target?.name} color={target?.color} />
         </span>
       ),
@@ -141,7 +153,7 @@ function ActivityEntry({ entry }) {
       message: () => (
         <span>
           <Strong name={actor.name} color={actor.color} /> claimed the{' '}
-          <em className="not-italic font-semibold text-gray-700">"{reward?.title}"</em>{' '}
+          <em className="not-italic font-bold text-gray-800">"{reward?.title}"</em>{' '}
           reward {reward?.emoji}
         </span>
       ),
@@ -154,7 +166,7 @@ function ActivityEntry({ entry }) {
         <span>
           <Strong name={actor.name} color={actor.color} /> approved{' '}
           <Strong name={target?.name} color={target?.color} />'s{' '}
-          <em className="not-italic font-semibold text-gray-700">"{reward?.title}"</em>{' '}
+          <em className="not-italic font-bold text-gray-800">"{reward?.title}"</em>{' '}
           reward {reward?.emoji}
         </span>
       ),
@@ -166,17 +178,17 @@ function ActivityEntry({ entry }) {
 
   return (
     <div
-      className="rounded-2xl p-3.5 border flex items-start gap-3"
+      className="rounded-2xl p-4 border flex items-start gap-3"
       style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
     >
-      <div className="flex-shrink-0 mt-0.5">
+      <div className="flex-shrink-0">
         <MemberAvatar memberId={entry.memberId} size="md" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 leading-relaxed">{cfg.message()}</p>
-        <p className="text-xs text-gray-400 mt-1">{timeAgo(entry.ts)}</p>
+        <p className="text-sm text-gray-700 leading-relaxed font-medium">{cfg.message()}</p>
+        <p className="text-xs text-gray-400 mt-1.5 font-medium">{timeAgo(entry.ts)}</p>
       </div>
-      <span className="text-xl flex-shrink-0">{cfg.emoji}</span>
+      <span className="text-2xl flex-shrink-0">{cfg.emoji}</span>
     </div>
   );
 }
