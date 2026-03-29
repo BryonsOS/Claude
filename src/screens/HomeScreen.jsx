@@ -1,6 +1,15 @@
 import { useApp } from '../context/AppContext';
 import { CATEGORY_META } from '../data/initialData';
 
+// Dark design tokens
+const D = {
+  bg:      '#0d1117',
+  card:    '#161b22',
+  border:  'rgba(255,255,255,0.08)',
+  textPri: '#f0f6fc',
+  textSec: '#8b949e',
+};
+
 const today = () => new Date().toISOString().split('T')[0];
 
 export default function HomeScreen({ setActiveTab }) {
@@ -10,173 +19,194 @@ export default function HomeScreen({ setActiveTab }) {
     : <KidHome setActiveTab={setActiveTab} />;
 }
 
-// ─── Parent Home ──────────────────────────────────────────────────────────────
+// ─── PARENT HOME ──────────────────────────────────────────────────────────────
 
 function ParentHome({ setActiveTab }) {
   const { members, chores, rewardClaims, currentUser } = useApp();
-  const kids = members.filter(m => m.role === 'child');
-  const pendingApprovals = chores.filter(c => c.status === 'completed');
-  const pendingRewards   = rewardClaims.filter(c => c.status === 'pending');
-  const todayChores = chores.filter(c => c.dueDate === today());
-  const doneToday   = todayChores.filter(c => c.status === 'approved').length;
-  const totalToday  = todayChores.length;
-  const pct = totalToday ? Math.round((doneToday / totalToday) * 100) : 0;
-  const needsAction = pendingApprovals.length + pendingRewards.length;
+  const kids            = members.filter(m => m.role === 'child');
+  const pendingApprove  = chores.filter(c => c.status === 'completed');
+  const pendingRewards  = rewardClaims.filter(c => c.status === 'pending');
+  const todayChores     = chores.filter(c => c.dueDate === today());
+  const doneToday       = todayChores.filter(c => c.status === 'approved').length;
+  const pct             = todayChores.length ? Math.round((doneToday / todayChores.length) * 100) : 0;
+  const needsAction     = pendingApprove.length + pendingRewards.length;
 
   return (
-    <div className="max-w-lg mx-auto pb-6">
-      {/* Header banner */}
-      <div className="px-4 pt-5 pb-6"
-        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
-        <p className="text-indigo-200 text-sm font-medium">Hi, {currentUser.name} 👋</p>
-        <h1 className="text-3xl font-black text-white mt-0.5">Family Overview</h1>
+    <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 8px' }}>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <StatBadge value={totalToday} label="Today" sublabel="chores" color="white" />
-          <StatBadge value={`${pct}%`} label="Done" sublabel="today" color="white" />
-          <StatBadge value={needsAction} label="Action" sublabel="needed" color={needsAction > 0 ? '#fbbf24' : 'white'} />
-        </div>
+      {/* Page title */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2 }}>
+          FAMILY HUB
+        </p>
+        <h1 style={{ color: D.textPri, fontSize: 28, fontWeight: 900, lineHeight: 1.1, margin: 0 }}>
+          Hey, {currentUser.name} 👋
+        </h1>
       </div>
 
-      <div className="px-4 space-y-4 -mt-3">
-        {/* Needs attention */}
-        {needsAction > 0 && (
-          <div
-            className="rounded-3xl overflow-hidden"
-            style={{ boxShadow: '0 6px 24px rgba(245,158,11,0.3)' }}
-          >
-            <div
-              className="px-4 py-3 flex items-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)' }}
-            >
-              <span className="text-white text-xl">⚡</span>
-              <span className="text-white font-black text-base">Needs your approval</span>
-              <span
-                className="ml-auto bg-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black"
-                style={{ color: '#f97316' }}
-              >
-                {needsAction}
-              </span>
-            </div>
-            <div className="bg-white divide-y divide-gray-50">
-              {pendingApprovals.map(c => (
-                <ApprovalRow key={c.id} chore={c} onTap={() => setActiveTab('chores')} />
-              ))}
-              {pendingRewards.map(cl => (
-                <RewardRow key={cl.id} claim={cl} onTap={() => setActiveTab('rewards')} />
-              ))}
-            </div>
+      {/* Stat tiles — 3 column */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
+        <StatTile value={todayChores.length} label="TODAY" color="#6366f1" />
+        <StatTile value={`${pct}%`}          label="DONE"  color="#10b981" />
+        <StatTile value={needsAction}         label="ACTION" color={needsAction > 0 ? '#f59e0b' : D.textSec} pulse={needsAction > 0} />
+      </div>
+
+      {/* Needs attention */}
+      {needsAction > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <SectionLabel emoji="⚡" text="NEEDS YOUR APPROVAL" color="#f59e0b" />
+          <div style={{ background: D.card, borderRadius: 20, border: `1px solid rgba(245,158,11,0.3)`, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(245,158,11,0.15), 0 4px 20px rgba(245,158,11,0.1)' }}>
+            {pendingApprove.map((c, i) => (
+              <ApprovalRow key={c.id} chore={c} onTap={() => setActiveTab('chores')} last={i === pendingApprove.length - 1 && pendingRewards.length === 0} />
+            ))}
+            {pendingRewards.map((cl, i) => (
+              <RewardRow key={cl.id} claim={cl} onTap={() => setActiveTab('rewards')} last={i === pendingRewards.length - 1} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Kids — 2-column tiles */}
+      <section style={{ marginBottom: 20 }}>
+        <SectionLabel emoji="👦" text="YOUR KIDS" color="#6366f1" />
+        {kids.length === 0 ? (
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: 24, textAlign: 'center' }}>
+            <p style={{ color: D.textSec, fontSize: 14 }}>No kids yet — add them in the Family tab.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {kids.map(kid => <KidTile key={kid.id} kid={kid} chores={chores} onTap={() => setActiveTab('chores')} />)}
           </div>
         )}
+      </section>
 
-        {/* Kids cards */}
-        <div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Kids</p>
-          <div className="space-y-3">
-            {kids.map(kid => <KidCard key={kid.id} kid={kid} chores={chores} onTap={() => setActiveTab('chores')} />)}
-            {kids.length === 0 && (
-              <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
-                <p className="text-gray-400 text-sm">No kids added yet — go to the Family tab to add them.</p>
-              </div>
+      {/* Today's chore list */}
+      {todayChores.length > 0 && (
+        <section>
+          <SectionLabel emoji="📋" text="TODAY'S CHORES" color="#6366f1" />
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden' }}>
+            {todayChores.slice(0, 6).map((c, i) => (
+              <ChoreRow key={c.id} chore={c} last={i === Math.min(todayChores.length, 6) - 1} />
+            ))}
+            {todayChores.length > 6 && (
+              <button
+                onClick={() => setActiveTab('chores')}
+                style={{ width: '100%', padding: '12px', textAlign: 'center', color: '#6366f1', fontWeight: 700, fontSize: 13, background: 'transparent', border: 'none', borderTop: `1px solid ${D.border}`, cursor: 'pointer' }}
+              >
+                See all {todayChores.length} chores →
+              </button>
             )}
           </div>
-        </div>
-
-        {/* Today's chore list */}
-        {todayChores.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Today's Chores</p>
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {todayChores.slice(0, 5).map((c, i) => (
-                <ChoreRow key={c.id} chore={c} last={i === Math.min(todayChores.length, 5) - 1} />
-              ))}
-              {todayChores.length > 5 && (
-                <button onClick={() => setActiveTab('chores')}
-                  className="w-full py-3 text-center text-indigo-500 font-semibold text-sm border-t border-gray-50">
-                  See all {todayChores.length} chores →
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   );
 }
 
-function StatBadge({ value, label, sublabel, color }) {
+function StatTile({ value, label, color, pulse }) {
   return (
-    <div className="bg-white bg-opacity-15 rounded-2xl p-3 text-center">
-      <p className="text-2xl font-black" style={{ color }}>{value}</p>
-      <p className="text-white text-xs font-semibold">{label}</p>
-      <p className="text-indigo-200 text-xs">{sublabel}</p>
+    <div style={{
+      background: D.card,
+      border: `1px solid ${D.border}`,
+      borderRadius: 16,
+      padding: '14px 10px',
+      textAlign: 'center',
+      boxShadow: pulse ? `0 0 0 1px ${color}40, 0 4px 16px ${color}20` : 'none',
+    }}>
+      <p style={{ color, fontSize: 28, fontWeight: 900, lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
+      <p style={{ color: D.textSec, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{label}</p>
     </div>
   );
 }
 
-function ApprovalRow({ chore, onTap }) {
-  const { members } = useApp();
-  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-  const kid = members.find(m => m.id === chore.assignedTo);
+function SectionLabel({ emoji, text, color }) {
   return (
-    <button onClick={onTap} className="w-full flex items-center gap-3 px-4 py-3">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-        style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
-      <div className="flex-1 text-left">
-        <p className="font-semibold text-gray-800 text-sm">{chore.title}</p>
-        <p className="text-xs text-gray-400">{kid?.name} · +{chore.points} pts</p>
-      </div>
-      <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">Review</span>
-    </button>
+    <p style={{ color, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10, marginTop: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+      {emoji} {text}
+    </p>
   );
 }
 
-function RewardRow({ claim, onTap }) {
-  const { members, rewards } = useApp();
-  const kid    = members.find(m => m.id === claim.claimedBy);
-  const reward = rewards.find(r => r.id === claim.rewardId);
-  if (!reward) return null;
-  return (
-    <button onClick={onTap} className="w-full flex items-center gap-3 px-4 py-3">
-      <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-lg flex-shrink-0">
-        {reward.emoji}
-      </div>
-      <div className="flex-1 text-left">
-        <p className="font-semibold text-gray-800 text-sm">{reward.title}</p>
-        <p className="text-xs text-gray-400">{kid?.name} · {reward.pointCost} pts</p>
-      </div>
-      <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">Claim</span>
-    </button>
-  );
-}
-
-function KidCard({ kid, chores, onTap }) {
+function KidTile({ kid, chores, onTap }) {
   const myChores = chores.filter(c => c.assignedTo === kid.id);
   const done     = myChores.filter(c => c.status === 'approved').length;
   const review   = myChores.filter(c => c.status === 'completed').length;
   const pct      = myChores.length ? Math.round((done / myChores.length) * 100) : 0;
 
   return (
-    <button onClick={onTap} className="w-full bg-white rounded-2xl p-4 shadow-sm text-left">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-          style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
-        <div className="flex-1">
-          <div className="flex justify-between items-center">
-            <p className="font-bold text-gray-900 text-base">{kid.name}</p>
-            <p className="font-black text-lg" style={{ color: kid.color }}>✨ {kid.points}</p>
-          </div>
-          <div className="flex gap-3 mt-0.5">
-            <span className="text-xs text-gray-500">{done}/{myChores.length} done</span>
-            {review > 0 && <span className="text-xs font-bold text-amber-500">⚡ {review} to review</span>}
-          </div>
-        </div>
+    <button
+      onClick={onTap}
+      style={{
+        background: D.card,
+        border: `1px solid ${D.border}`,
+        borderRadius: 20,
+        padding: 16,
+        textAlign: 'left',
+        cursor: 'pointer',
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06)`,
+        display: 'block',
+        width: '100%',
+      }}
+    >
+      <div style={{ fontSize: 36, marginBottom: 8, display: 'block' }}>{kid.emoji}</div>
+      <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 2px' }}>{kid.name}</p>
+      <p style={{ color: kid.color, fontWeight: 900, fontSize: 13, margin: '0 0 10px' }}>✨ {kid.points} pts</p>
+
+      {/* Progress bar */}
+      <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, height: 6, marginBottom: 4 }}>
+        <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max(pct, 0)}%`, transition: 'width 0.3s' }} />
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2.5">
-        <div className="h-2.5 rounded-full transition-all"
-          style={{ width: `${pct}%`, backgroundColor: kid.color }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: D.textSec, fontSize: 11 }}>{done}/{myChores.length} done</span>
+        {review > 0 && <span style={{ color: '#f59e0b', fontSize: 11, fontWeight: 700 }}>⚡ {review} to review</span>}
       </div>
+    </button>
+  );
+}
+
+function ApprovalRow({ chore, onTap, last }) {
+  const { members } = useApp();
+  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const kid = members.find(m => m.id === chore.assignedTo);
+  return (
+    <button
+      onClick={onTap}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+        borderBottom: last ? 'none' : `1px solid ${D.border}`,
+      }}
+    >
+      <div style={{ width: 38, height: 38, borderRadius: 12, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{cat.emoji}</div>
+      <div style={{ flex: 1, textAlign: 'left' }}>
+        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{chore.title}</p>
+        <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>{kid?.name} · +{chore.points} pts</p>
+      </div>
+      <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, flexShrink: 0 }}>Review</span>
+    </button>
+  );
+}
+
+function RewardRow({ claim, onTap, last }) {
+  const { members, rewards } = useApp();
+  const kid    = members.find(m => m.id === claim.claimedBy);
+  const reward = rewards.find(r => r.id === claim.rewardId);
+  if (!reward) return null;
+  return (
+    <button
+      onClick={onTap}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+        borderBottom: last ? 'none' : `1px solid ${D.border}`,
+      }}
+    >
+      <div style={{ width: 38, height: 38, borderRadius: 12, background: '#2d1b69', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{reward.emoji}</div>
+      <div style={{ flex: 1, textAlign: 'left' }}>
+        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{reward.title}</p>
+        <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>{kid?.name} · {reward.pointCost} pts</p>
+      </div>
+      <span style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, flexShrink: 0 }}>Claim</span>
     </button>
   );
 }
@@ -185,171 +215,164 @@ function ChoreRow({ chore, last }) {
   const { members } = useApp();
   const cat      = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const assignee = members.find(m => m.id === chore.assignedTo);
-  const status   = {
-    pending:   { label: 'To Do',   color: '#6366f1', bg: '#eef2ff' },
-    completed: { label: 'Review',  color: '#f59e0b', bg: '#fffbeb' },
-    approved:  { label: 'Done ✓',  color: '#22c55e', bg: '#f0fdf4' },
-    rejected:  { label: 'Redo',    color: '#ef4444', bg: '#fef2f2' },
-  }[chore.status] || { label: 'To Do', color: '#6366f1', bg: '#eef2ff' };
-
+  const statusMap = {
+    pending:   { label: 'To Do',  color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
+    completed: { label: 'Review', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    approved:  { label: 'Done ✓', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    rejected:  { label: 'Redo',   color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  };
+  const st = statusMap[chore.status] || statusMap.pending;
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 ${!last ? 'border-b border-gray-50' : ''}`}>
-      <span className="text-lg">{cat.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 truncate">{chore.title}</p>
-        <p className="text-xs text-gray-400">{assignee?.name}</p>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: last ? 'none' : `1px solid ${D.border}` }}>
+      <span style={{ fontSize: 18 }}>{cat.emoji}</span>
+      <div style={{ flex: 1 }}>
+        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: '0 0 1px' }}>{chore.title}</p>
+        <p style={{ color: D.textSec, fontSize: 11, margin: 0 }}>{assignee?.name}</p>
       </div>
-      <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-        style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span>
+      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>{st.label}</span>
     </div>
   );
 }
 
-// ─── Kid Home ─────────────────────────────────────────────────────────────────
+// ─── KID HOME ─────────────────────────────────────────────────────────────────
 
 function KidHome({ setActiveTab }) {
   const { currentUser, chores, rewards, completeChore } = useApp();
-  const myChores     = chores.filter(c => c.assignedTo === currentUser.id);
-  const todayChores  = myChores.filter(c => c.dueDate === today());
-  const pending      = todayChores.filter(c => c.status === 'pending');
-  const done         = todayChores.filter(c => c.status === 'approved').length;
-  const waiting      = todayChores.filter(c => c.status === 'completed').length;
-  const canAfford    = rewards.filter(r => r.pointCost <= currentUser.points);
-  const streak       = calcStreak(myChores);
+  const myChores    = chores.filter(c => c.assignedTo === currentUser.id);
+  const todayChores = myChores.filter(c => c.dueDate === today());
+  const pending     = todayChores.filter(c => c.status === 'pending');
+  const done        = todayChores.filter(c => c.status === 'approved').length;
+  const waiting     = todayChores.filter(c => c.status === 'completed').length;
+  const canAfford   = rewards.filter(r => r.pointCost <= currentUser.points);
+  const streak      = calcStreak(myChores);
+  const color       = currentUser.color;
 
   return (
-    <div className="max-w-lg mx-auto pb-6">
-      {/* Game-style hero */}
-      <div
-        className="relative overflow-hidden px-4 pt-6 pb-10"
-        style={{
-          background: `linear-gradient(145deg, ${currentUser.color} 0%, ${currentUser.color}99 100%)`,
-        }}
-      >
-        {/* Decorative circles */}
-        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-20" style={{ background: 'white' }} />
-        <div className="absolute right-10 bottom-0 w-28 h-28 rounded-full opacity-10" style={{ background: 'white' }} />
-        <div className="absolute -left-4 bottom-2 w-20 h-20 rounded-full opacity-10" style={{ background: 'white' }} />
+    <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 8px' }}>
 
-        <div className="relative z-10">
-          {/* Avatar + name */}
-          <div className="flex items-center gap-4 mb-5">
-            <div
-              className="w-20 h-20 rounded-3xl flex items-center justify-center text-5xl flex-shrink-0 shadow-xl"
-              style={{ background: 'rgba(255,255,255,0.25)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
-            >
-              {currentUser.emoji}
-            </div>
-            <div>
-              <p className="text-white text-sm font-bold" style={{ opacity: 0.75 }}>Let's go,</p>
-              <h1 className="text-4xl font-black text-white leading-none">{currentUser.name}!</h1>
-              {streak > 0 && (
-                <div className="flex items-center gap-1 mt-1.5">
-                  <span className="text-base">🔥</span>
-                  <span className="text-white font-black text-sm">{streak} day streak!</span>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Hero card — kid's color accent */}
+      <div style={{
+        background: D.card,
+        border: `1px solid ${D.border}`,
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 16,
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: `0 0 0 1px ${color}30, 0 8px 32px ${color}18`,
+      }}>
+        {/* Colored top accent bar */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${color}, ${color}66)` }} />
 
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-2">
-            <HeroStat label="Points" value={currentUser.points} icon="✨" />
-            <HeroStat label="Done" value={`${done}/${todayChores.length}`} icon="✅" />
-            <HeroStat label="Waiting" value={waiting} icon="⏳" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 20,
+            background: `${color}20`,
+            border: `2px solid ${color}40`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36,
+          }}>{currentUser.emoji}</div>
+          <div>
+            <p style={{ color: D.textSec, fontSize: 12, fontWeight: 600, margin: '0 0 2px' }}>Let's go,</p>
+            <p style={{ color: D.textPri, fontSize: 28, fontWeight: 900, lineHeight: 1, margin: '0 0 4px' }}>{currentUser.name}!</p>
+            {streak > 0 && (
+              <p style={{ color: '#f59e0b', fontSize: 13, fontWeight: 700, margin: 0 }}>🔥 {streak} day streak</p>
+            )}
           </div>
+        </div>
+
+        {/* Stats — 3 tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <MiniStat label="POINTS" value={currentUser.points} color={color} />
+          <MiniStat label="TODAY" value={`${done}/${todayChores.length}`} color="#10b981" />
+          <MiniStat label="WAITING" value={waiting} color={waiting > 0 ? '#f59e0b' : D.textSec} />
         </div>
       </div>
 
-      <div className="px-4 space-y-4 -mt-4">
-        {/* All done banner */}
-        {pending.length === 0 && todayChores.length > 0 && (
-          <div
-            className="rounded-3xl p-5 text-center shadow-xl"
-            style={{
-              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-              boxShadow: '0 8px 30px rgba(34,197,94,0.4)',
-            }}
-          >
-            <p className="text-4xl mb-1">🎉</p>
-            <p className="font-black text-white text-xl">You crushed it today!</p>
-            {waiting > 0 && (
-              <p className="text-green-100 text-sm mt-1 font-medium">
-                {waiting} chore{waiting > 1 ? 's' : ''} waiting for parent approval
-              </p>
-            )}
-          </div>
-        )}
+      {/* All done! */}
+      {pending.length === 0 && todayChores.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #064e3b, #065f46)',
+          border: '1px solid rgba(16,185,129,0.3)',
+          borderRadius: 20, padding: '20px 16px', textAlign: 'center', marginBottom: 16,
+          boxShadow: '0 4px 20px rgba(16,185,129,0.2)',
+        }}>
+          <p style={{ fontSize: 36, margin: '0 0 6px' }}>🎉</p>
+          <p style={{ color: '#6ee7b7', fontWeight: 900, fontSize: 20, margin: '0 0 4px' }}>You crushed it today!</p>
+          {waiting > 0 && <p style={{ color: '#a7f3d0', fontSize: 13, margin: 0 }}>{waiting} chore{waiting > 1 ? 's' : ''} waiting for approval</p>}
+        </div>
+      )}
 
-        {/* Pending chores */}
-        {pending.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-              To Do Today · {pending.length} left
-            </p>
-            <div className="space-y-2.5">
-              {pending.map(chore => (
-                <BigChoreCard
-                  key={chore.id}
-                  chore={chore}
-                  onComplete={() => completeChore(chore.id)}
-                  color={currentUser.color}
-                />
-              ))}
-            </div>
+      {/* Pending chores */}
+      {pending.length > 0 && (
+        <section style={{ marginBottom: 16 }}>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+            TO DO TODAY · {pending.length} left
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {pending.map(chore => (
+              <BigChoreCard key={chore.id} chore={chore} onComplete={() => completeChore(chore.id)} color={color} />
+            ))}
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Waiting for approval */}
-        {waiting > 0 && (
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Waiting for Approval</p>
-            <div className="space-y-2">
-              {todayChores.filter(c => c.status === 'completed').map(chore => {
-                const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-                return (
-                  <div key={chore.id} className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-                    <span className="text-xl">{cat.emoji}</span>
-                    <p className="flex-1 font-semibold text-amber-800 text-sm">{chore.title}</p>
-                    <span className="text-xs text-amber-500 font-bold">⏳ Pending</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Affordable rewards */}
-        {canAfford.length > 0 && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Rewards You Can Get</p>
-              <button onClick={() => setActiveTab('rewards')} className="text-indigo-500 text-xs font-bold">See all</button>
-            </div>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-              {canAfford.slice(0, 5).map(r => (
-                <div key={r.id} className="flex-shrink-0 w-28 bg-white rounded-2xl shadow-sm p-3 text-center border border-gray-100">
-                  <span className="text-3xl">{r.emoji}</span>
-                  <p className="text-xs font-bold text-gray-700 mt-1.5 leading-tight line-clamp-2">{r.title}</p>
-                  <p className="text-indigo-600 font-black text-sm mt-1">✨ {r.pointCost}</p>
+      {/* Waiting approval */}
+      {waiting > 0 && (
+        <section style={{ marginBottom: 16 }}>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+            WAITING FOR APPROVAL
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {todayChores.filter(c => c.status === 'completed').map(chore => {
+              const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+              return (
+                <div key={chore.id} style={{
+                  background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <span style={{ fontSize: 20 }}>{cat.emoji}</span>
+                  <p style={{ flex: 1, color: '#fcd34d', fontWeight: 700, fontSize: 14, margin: 0 }}>{chore.title}</p>
+                  <span style={{ color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>⏳ Pending</span>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </section>
+      )}
+
+      {/* Rewards you can get */}
+      {canAfford.length > 0 && (
+        <section style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>
+              🎁 YOU CAN CLAIM
+            </p>
+            <button onClick={() => setActiveTab('rewards')} style={{ color: color, fontSize: 13, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>See all →</button>
+          </div>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+            {canAfford.slice(0, 5).map(r => (
+              <div key={r.id} style={{
+                flexShrink: 0, width: 110,
+                background: D.card, border: `1px solid ${D.border}`,
+                borderRadius: 16, padding: 12, textAlign: 'center',
+              }}>
+                <span style={{ fontSize: 28, display: 'block', marginBottom: 6 }}>{r.emoji}</span>
+                <p style={{ color: D.textPri, fontWeight: 700, fontSize: 12, margin: '0 0 4px', lineHeight: 1.2 }}>{r.title}</p>
+                <p style={{ color, fontWeight: 900, fontSize: 12, margin: 0 }}>✨ {r.pointCost}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
 
-function HeroStat({ label, value, icon }) {
+function MiniStat({ label, value, color }) {
   return (
-    <div
-      className="rounded-2xl p-3 text-center"
-      style={{ background: 'rgba(255,255,255,0.22)' }}
-    >
-      <p className="text-white text-xs font-bold mb-0.5" style={{ opacity: 0.75 }}>{label}</p>
-      <p className="text-white font-black text-xl leading-none">{icon} {value}</p>
+    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+      <p style={{ color: D.textSec, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 3px' }}>{label}</p>
+      <p style={{ color, fontSize: 22, fontWeight: 900, lineHeight: 1, margin: 0 }}>{value}</p>
     </div>
   );
 }
@@ -357,32 +380,33 @@ function HeroStat({ label, value, icon }) {
 function BigChoreCard({ chore, onComplete, color }) {
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   return (
-    <div
-      className="bg-white rounded-3xl overflow-hidden shadow-lg"
-      style={{ boxShadow: `0 4px 20px ${color}20, 0 2px 8px rgba(0,0,0,0.06)` }}
-    >
-      <div className="flex items-center gap-3 px-4 py-4">
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 shadow-sm"
-          style={{ backgroundColor: cat.bg }}
-        >
+    <div style={{
+      background: D.card,
+      border: `1px solid ${D.border}`,
+      borderRadius: 20,
+      overflow: 'hidden',
+      display: 'flex',
+      boxShadow: `0 2px 12px ${color}15`,
+    }}>
+      {/* Left color strip */}
+      <div style={{ width: 5, background: `linear-gradient(180deg, ${color}, ${color}66)`, flexShrink: 0 }} />
+
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 14px 12px' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
           {cat.emoji}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-gray-900 text-base leading-tight">{chore.title}</p>
-          <div
-            className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-black"
-            style={{ background: `${color}18`, color }}
-          >
-            +{chore.points} pts
-          </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
+          <span style={{ background: `${color}20`, color, fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{chore.points} pts</span>
         </div>
         <button
           onClick={onComplete}
-          className="px-5 py-3.5 rounded-2xl font-black text-white text-sm flex-shrink-0 active:scale-90 transition-transform"
           style={{
-            background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
+            padding: '12px 18px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 14,
+            background: `linear-gradient(135deg, ${color}, ${color}bb)`,
             boxShadow: `0 4px 16px ${color}55`,
+            border: 'none', cursor: 'pointer', flexShrink: 0,
+            transition: 'transform 0.1s',
           }}
         >
           ✓ Done

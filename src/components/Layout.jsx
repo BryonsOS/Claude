@@ -8,108 +8,120 @@ const NAV_ITEMS = [
   { id: 'family',  label: 'Family',  emoji: '👨‍👩‍👧' },
 ];
 
+// Design tokens — all screens import from here via inline styles
+export const D = {
+  bg:        '#0d1117',
+  card:      '#161b22',
+  cardHover: '#1c2128',
+  border:    'rgba(255,255,255,0.08)',
+  textPri:   '#f0f6fc',
+  textSec:   '#8b949e',
+  accent:    '#6366f1',
+};
+
 export default function Layout({ activeTab, setActiveTab, children }) {
   const { currentUser, setCurrentUserId, chores, rewardClaims } = useApp();
 
   const pendingApprovals = chores.filter(c => c.status === 'completed').length;
   const pendingRewards   = rewardClaims.filter(c => c.status === 'pending').length;
-  const totalBadge = pendingApprovals + pendingRewards;
-  const isParent = currentUser.role === 'parent';
+  const totalBadge       = pendingApprovals + pendingRewards;
+  const isParent         = currentUser.role === 'parent';
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f0f0ff' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: D.bg }}>
 
-      {/* Top Bar */}
+      {/* Compact top bar */}
       <header
-        className="sticky top-0 z-20"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)',
-          paddingBottom: '0.625rem',
-          background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)',
+          paddingBottom: '0.5rem',
+          background: D.card,
+          borderBottom: `1px solid ${D.border}`,
         }}
       >
-        <div className="px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shadow-md"
-              style={{ background: 'rgba(255,255,255,0.2)' }}
-            >
-              🏠
-            </div>
-            <span className="font-black text-white text-lg tracking-tight">ChoreFamily</span>
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, boxShadow: '0 2px 8px rgba(99,102,241,0.5)',
+            }}>🏠</div>
+            <span style={{ color: D.textPri, fontWeight: 900, fontSize: 17, letterSpacing: '-0.02em' }}>ChoreFamily</span>
           </div>
 
-          {/* User pill */}
           <button
             onClick={() => setCurrentUserId(null)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl active:scale-95 transition-transform"
-            style={{ background: 'rgba(255,255,255,0.18)' }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 20,
+              background: 'rgba(255,255,255,0.08)',
+              border: `1px solid ${D.border}`,
+              cursor: 'pointer',
+            }}
           >
-            <span className="text-base">{currentUser.emoji}</span>
-            <span className="text-white text-sm font-bold">{currentUser.name}</span>
-            <span
-              className="text-xs font-black rounded-full px-2 py-0.5 ml-0.5"
-              style={{ background: 'rgba(255,255,255,0.9)', color: '#4f46e5' }}
-            >
+            <span style={{ fontSize: 16 }}>{currentUser.emoji}</span>
+            <span style={{ color: D.textPri, fontSize: 13, fontWeight: 700 }}>{currentUser.name}</span>
+            <span style={{
+              background: currentUser.color,
+              color: 'white', fontSize: 11, fontWeight: 900,
+              padding: '1px 7px', borderRadius: 10,
+            }}>
               {isParent ? '👑' : `${currentUser.points}✨`}
             </span>
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-24">
+      {/* Main */}
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 80 }}>
         {children}
       </main>
 
-      {/* Bottom Navigation — glass morphism pill nav */}
+      {/* Bottom nav — dark glass */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-20"
         style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 20,
           paddingBottom: 'env(safe-area-inset-bottom)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          background: 'rgba(255,255,255,0.88)',
-          borderTop: '1px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 -4px 24px rgba(79,70,229,0.12)',
+          background: 'rgba(13,17,23,0.92)',
+          borderTop: `1px solid ${D.border}`,
         }}
       >
-        <div className="max-w-lg mx-auto flex items-center px-2 py-2 gap-1">
+        <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', padding: '6px 8px', gap: 4 }}>
           {NAV_ITEMS.map(item => {
-            const isActive = activeTab === item.id;
+            const isActive  = activeTab === item.id;
             const showBadge = isParent && item.id === 'chores' && totalBadge > 0;
-
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className="flex-1 flex flex-col items-center py-2.5 rounded-2xl relative transition-all active:scale-90"
-                style={
-                  isActive
-                    ? {
-                        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                        boxShadow: '0 4px 16px rgba(99,102,241,0.45)',
-                      }
-                    : {}
-                }
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '8px 4px', borderRadius: 16, cursor: 'pointer', position: 'relative',
+                  background: isActive ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'transparent',
+                  boxShadow: isActive ? '0 4px 16px rgba(99,102,241,0.4)' : 'none',
+                  transition: 'all 0.15s',
+                  border: 'none',
+                }}
               >
-                <div className="relative">
-                  <span
-                    className="text-2xl block transition-transform"
-                    style={{ transform: isActive ? 'scale(1.15)' : 'scale(1)' }}
-                  >
+                <div style={{ position: 'relative' }}>
+                  <span style={{ fontSize: 22, display: 'block', transform: isActive ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.15s' }}>
                     {item.emoji}
                   </span>
                   {showBadge && (
-                    <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    <span style={{
+                      position: 'absolute', top: -4, right: -8,
+                      background: '#ef4444', color: 'white',
+                      fontSize: 10, fontWeight: 900, borderRadius: '50%',
+                      width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
                       {totalBadge}
                     </span>
                   )}
                 </div>
-                <span
-                  className="text-xs font-bold mt-0.5"
-                  style={{ color: isActive ? 'white' : '#9ca3af' }}
-                >
+                <span style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: isActive ? 'white' : D.textSec }}>
                   {item.label}
                 </span>
               </button>

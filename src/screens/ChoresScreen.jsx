@@ -3,6 +3,14 @@ import { useApp } from '../context/AppContext';
 import { CATEGORY_META } from '../data/initialData';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 
+const D = {
+  bg:      '#0d1117',
+  card:    '#161b22',
+  border:  'rgba(255,255,255,0.08)',
+  textPri: '#f0f6fc',
+  textSec: '#8b949e',
+};
+
 const STATUS_TABS = [
   { id: 'all',       label: 'All' },
   { id: 'pending',   label: 'To Do' },
@@ -10,58 +18,72 @@ const STATUS_TABS = [
   { id: 'approved',  label: 'Done' },
 ];
 
+const STATUS_MAP = {
+  pending:   { label: 'To Do',        color: '#818cf8', bg: 'rgba(99,102,241,0.15)' },
+  completed: { label: 'Needs Review', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)' },
+  approved:  { label: 'Approved ✓',   color: '#34d399', bg: 'rgba(52,211,153,0.15)' },
+  rejected:  { label: 'Redo',         color: '#f87171', bg: 'rgba(248,113,113,0.15)' },
+};
+
 export default function ChoresScreen() {
   const { currentUser } = useApp();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter]         = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedChore, setSelectedChore] = useState(null);
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Header banner */}
-      <div className="px-4 pt-5 pb-5"
-        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
-        <div className="flex items-center justify-between mb-4">
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <h1 className="text-2xl font-black text-white">Chore Board</h1>
-            <p className="text-indigo-200 text-sm mt-0.5">
-              {currentUser.role === 'parent' ? 'Manage & approve chores' : 'Your tasks today'}
-            </p>
+            <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 2px' }}>CHORES</p>
+            <h1 style={{ color: D.textPri, fontSize: 26, fontWeight: 900, margin: 0 }}>Chore Board</h1>
           </div>
           {currentUser.role === 'parent' && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-white text-indigo-600 font-bold px-4 py-2.5 rounded-2xl text-sm shadow-lg"
+              style={{
+                padding: '10px 18px', borderRadius: 16, fontWeight: 900,
+                color: 'white', fontSize: 14, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+              }}
             >
               + Assign
             </button>
           )}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {STATUS_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                filter === tab.id
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-indigo-200 bg-white bg-opacity-15'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Filter pills */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
+          {STATUS_TABS.map(tab => {
+            const active = filter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                style={{
+                  flexShrink: 0, padding: '8px 16px', borderRadius: 20,
+                  fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                  background: active ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : D.card,
+                  color: active ? 'white' : D.textSec,
+                  boxShadow: active ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
+                  border: active ? 'none' : `1px solid ${D.border}`,
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <ChoreList filter={filter} onSelectChore={setSelectedChore} />
 
       {showAddModal && <AddChoreModal onClose={() => setShowAddModal(false)} />}
-      {selectedChore && (
-        <ChoreDetailModal chore={selectedChore} onClose={() => setSelectedChore(null)} />
-      )}
+      {selectedChore && <ChoreDetailModal chore={selectedChore} onClose={() => setSelectedChore(null)} />}
     </div>
   );
 }
@@ -78,35 +100,31 @@ function ChoreList({ filter, onSelectChore }) {
 
   if (filtered.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-        <span className="text-6xl mb-3">✨</span>
-        <p className="font-bold text-gray-500 text-lg">Nothing here!</p>
-        <p className="text-sm mt-1 text-gray-400">
+      <div style={{ textAlign: 'center', padding: '60px 16px' }}>
+        <p style={{ fontSize: 48, marginBottom: 12 }}>✨</p>
+        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 16 }}>Nothing here!</p>
+        <p style={{ color: D.textSec, fontSize: 13 }}>
           {filter === 'completed' ? 'No chores waiting for review.' : 'All chores are accounted for.'}
         </p>
       </div>
     );
   }
 
-  // Group by assignee for parent view
   if (isParent && filter === 'all') {
     const kids = members.filter(m => m.role === 'child');
     return (
-      <div className="px-4 pt-4 space-y-5 pb-4">
+      <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {kids.map(kid => {
           const kidChores = filtered.filter(c => c.assignedTo === kid.id);
           if (!kidChores.length) return null;
           return (
             <div key={kid.id}>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
-                  style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
-                <span className="font-bold text-gray-800">{kid.name}</span>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {kidChores.length}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: kid.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{kid.emoji}</div>
+                <span style={{ color: D.textPri, fontWeight: 900, fontSize: 15 }}>{kid.name}</span>
+                <span style={{ background: D.card, border: `1px solid ${D.border}`, color: D.textSec, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{kidChores.length}</span>
               </div>
-              <div className="space-y-2.5">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {kidChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} />)}
               </div>
             </div>
@@ -117,7 +135,7 @@ function ChoreList({ filter, onSelectChore }) {
   }
 
   return (
-    <div className="px-4 pt-4 space-y-2.5 pb-4">
+    <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
       {filtered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} />)}
     </div>
   );
@@ -125,65 +143,55 @@ function ChoreList({ filter, onSelectChore }) {
 
 function ChoreCard({ chore, onClick }) {
   const { currentUser, completeChore, approveChore } = useApp();
-  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-  const isParent = currentUser.role === 'parent';
+  const cat       = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const isParent  = currentUser.role === 'parent';
   const isMyChore = chore.assignedTo === currentUser.id;
-
-  const statusConfig = {
-    pending:   { color: '#6366f1', bg: '#eef2ff', label: 'To Do' },
-    completed: { color: '#d97706', bg: '#fffbeb', label: 'Needs Review' },
-    approved:  { color: '#16a34a', bg: '#f0fdf4', label: 'Approved ✓' },
-    rejected:  { color: '#dc2626', bg: '#fef2f2', label: 'Redo' },
-  };
-  const st = statusConfig[chore.status] || statusConfig.pending;
+  const st        = STATUS_MAP[chore.status] || STATUS_MAP.pending;
   const isOverdue = chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
+  const color     = currentUser.color;
 
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform overflow-hidden"
+      style={{
+        background: D.card, border: `1px solid ${D.border}`,
+        borderRadius: 20, overflow: 'hidden', cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      }}
     >
-      <div className="flex items-center gap-3 px-4 py-4">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-          style={{ backgroundColor: cat.bg }}>
-          {cat.emoji}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-bold text-gray-900 text-base leading-tight">{chore.title}</p>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-              style={{ color: st.color, backgroundColor: st.bg }}>
-              {st.label}
-            </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 10px' }}>
+        <div style={{ width: 46, height: 46, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>{cat.emoji}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: 0, lineHeight: 1.2 }}>{chore.title}</p>
+            <span style={{ background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0, letterSpacing: '0.03em' }}>{st.label}</span>
           </div>
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="font-black text-sm" style={{ color: '#6366f1' }}>+{chore.points} pts</span>
-            {isParent && (
-              <div className="flex items-center gap-1">
-                <MemberAvatar memberId={chore.assignedTo} size="sm" />
-                <MemberName memberId={chore.assignedTo} className="text-xs text-gray-500" />
-              </div>
-            )}
-            <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
+            <span style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{chore.points} pts</span>
+            {isParent && <MemberName memberId={chore.assignedTo} className="" style={{ color: D.textSec, fontSize: 11 }} />}
+            <span style={{ color: isOverdue ? '#f87171' : D.textSec, fontSize: 11, fontWeight: isOverdue ? 700 : 400 }}>
               {isOverdue ? '⚠️ Overdue' : `📅 ${formatDate(chore.dueDate)}`}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="px-4 pb-4 flex gap-2" onClick={e => e.stopPropagation()}>
+      {/* Actions */}
+      <div style={{ padding: '0 14px 14px', display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
         {!isParent && isMyChore && chore.status === 'pending' && (
           <button
             onClick={() => completeChore(chore.id)}
-            className="flex-1 py-3.5 rounded-xl text-sm font-black text-white shadow-sm"
-            style={{ backgroundColor: currentUser.color }}
+            style={{
+              flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14,
+              background: `linear-gradient(135deg, ${color}, ${color}bb)`,
+              boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer',
+            }}
           >
             Mark Done ✓
           </button>
         )}
         {!isParent && isMyChore && chore.status === 'completed' && (
-          <div className="flex-1 py-3.5 rounded-xl text-sm font-bold text-amber-700 text-center bg-amber-50 border border-amber-100">
+          <div style={{ flex: 1, padding: '13px 0', borderRadius: 14, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', textAlign: 'center', color: '#fbbf24', fontWeight: 700, fontSize: 13 }}>
             ⏳ Waiting for parent
           </div>
         )}
@@ -191,13 +199,13 @@ function ChoreCard({ chore, onClick }) {
           <>
             <button
               onClick={() => approveChore(chore.id)}
-              className="flex-1 py-3.5 rounded-xl text-sm font-black text-white bg-green-500"
+              style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}
             >
               Approve ✓
             </button>
             <button
               onClick={e => { e.stopPropagation(); }}
-              className="px-5 py-3.5 rounded-xl text-sm font-black text-red-500 bg-red-50"
+              style={{ padding: '13px 18px', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}
             >
               Reject
             </button>
@@ -211,103 +219,96 @@ function ChoreCard({ chore, onClick }) {
 function ChoreDetailModal({ chore, onClose }) {
   const { currentUser, approveChore, rejectChore, completeChore } = useApp();
   const [rejectReason, setRejectReason] = useState('');
-  const [showReject, setShowReject] = useState(false);
-  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const [showReject,   setShowReject]   = useState(false);
+  const cat      = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent = currentUser.role === 'parent';
-
-  const handleReject = () => {
-    rejectChore(chore.id, rejectReason);
-    onClose();
-  };
-
-  const statusConfig = {
-    pending:   { color: '#6366f1', label: 'To Do' },
-    completed: { color: '#d97706', label: 'Needs Review' },
-    approved:  { color: '#16a34a', label: 'Approved' },
-    rejected:  { color: '#dc2626', label: 'Needs Redo' },
-  };
-  const st = statusConfig[chore.status] || statusConfig.pending;
+  const st       = STATUS_MAP[chore.status] || STATUS_MAP.pending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50"
-      onClick={onClose}>
-      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10"
-        onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 24px 40px', border: `1px solid ${D.border}` }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
 
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-            style={{ backgroundColor: cat.bg }}>{cat.emoji}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{ width: 60, height: 60, borderRadius: 18, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{cat.emoji}</div>
           <div>
-            <h3 className="text-xl font-black text-gray-900">{chore.title}</h3>
-            <span className="text-sm font-bold" style={{ color: st.color }}>{st.label}</span>
+            <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 20, margin: '0 0 4px' }}>{chore.title}</h3>
+            <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
           </div>
         </div>
 
         {chore.description && (
-          <p className="text-gray-600 text-sm mb-4 bg-gray-50 rounded-xl p-3">{chore.description}</p>
+          <p style={{ color: D.textSec, fontSize: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>{chore.description}</p>
         )}
 
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <InfoTile label="Points" value={`✨ ${chore.points}`} />
-          <InfoTile label="Due" value={`📅 ${formatDate(chore.dueDate)}`} />
-          <InfoTile label="Repeats" value={`🔁 ${chore.recurrence}`} />
-          <InfoTile label="Category" value={`${cat.emoji} ${cat.label}`} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {[
+            { label: 'Points', value: `✨ ${chore.points}` },
+            { label: 'Due', value: `📅 ${formatDate(chore.dueDate)}` },
+            { label: 'Repeats', value: `🔁 ${chore.recurrence}` },
+            { label: 'Category', value: `${cat.emoji} ${cat.label}` },
+          ].map(t => (
+            <div key={t.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 12px' }}>
+              <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 2px' }}>{t.label}</p>
+              <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: 0 }}>{t.value}</p>
+            </div>
+          ))}
         </div>
 
         {isParent && chore.status === 'completed' && !showReject && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => { approveChore(chore.id); onClose(); }}
-              className="flex-1 py-4 rounded-2xl font-black text-white bg-green-500 text-base"
-            >
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { approveChore(chore.id); onClose(); }}
+              style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}>
               Approve ✓
             </button>
-            <button
-              onClick={() => setShowReject(true)}
-              className="flex-1 py-4 rounded-2xl font-black text-red-500 bg-red-50 text-base"
-            >
+            <button onClick={() => setShowReject(true)}
+              style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: '#f87171', fontSize: 16, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
               Send Back
             </button>
           </div>
         )}
-
         {isParent && chore.status === 'completed' && showReject && (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <textarea
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}
               placeholder="Tell them what needs to be fixed..."
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none"
+              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 14, resize: 'none', boxSizing: 'border-box' }}
               rows={3}
             />
-            <div className="flex gap-3">
-              <button onClick={handleReject}
-                className="flex-1 py-4 rounded-2xl font-black text-white bg-red-500">
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { rejectChore(chore.id, rejectReason); onClose(); }}
+                style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', background: '#dc2626', border: 'none', cursor: 'pointer' }}>
                 Send Back
               </button>
               <button onClick={() => setShowReject(false)}
-                className="flex-1 py-4 rounded-2xl font-black text-gray-500 bg-gray-100">
+                style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
           </div>
         )}
-
         {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
           <button
             onClick={() => { completeChore(chore.id); onClose(); }}
-            className="w-full py-4 rounded-2xl font-black text-white text-base"
-            style={{ backgroundColor: currentUser.color }}
-          >
+            style={{
+              width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16,
+              background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`,
+              boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer',
+            }}>
             Mark as Complete ✓
           </button>
         )}
-
         {chore.rejectionReason && (
-          <div className="mt-3 p-4 bg-red-50 rounded-2xl border border-red-100">
-            <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-1">Parent's note:</p>
-            <p className="text-sm text-red-700">{chore.rejectionReason}</p>
+          <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '10px 14px' }}>
+            <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>PARENT'S NOTE:</p>
+            <p style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{chore.rejectionReason}</p>
           </div>
         )}
       </div>
@@ -315,153 +316,69 @@ function ChoreDetailModal({ chore, onClose }) {
   );
 }
 
-function InfoTile({ label, value }) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-3">
-      <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-gray-800">{value}</p>
-    </div>
-  );
-}
-
 function AddChoreModal({ onClose }) {
   const { members, addChore } = useApp();
-  const kids = members.filter(m => m.role === 'child');
+  const kids  = members.filter(m => m.role === 'child');
   const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({ title: '', description: '', assignedTo: kids[0]?.id || '', points: 15, dueDate: today, recurrence: 'once', category: 'cleaning' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    assignedTo: kids[0]?.id || '',
-    points: 15,
-    dueDate: today,
-    recurrence: 'once',
-    category: 'cleaning',
-  });
-
-  const handleSubmit = () => {
-    if (!form.title.trim() || !form.assignedTo) return;
-    addChore(form);
-    onClose();
-  };
-
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
+  const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50"
-      onClick={onClose}>
-      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10 overflow-y-auto max-h-[90vh]"
-        onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-        <h3 className="text-xl font-black text-gray-900 mb-5">Assign a Chore</h3>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
+        <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 20px' }}>Assign a Chore</h3>
 
-        <div className="space-y-5">
-          <Field label="Chore Title">
-            <input
-              type="text"
-              value={form.title}
-              onChange={e => set('title', e.target.value)}
-              placeholder="e.g. Wash Dishes"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-base font-medium focus:outline-none focus:border-indigo-300"
-              autoFocus
-            />
-          </Field>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div><label style={labelStyle}>Chore Title</label><input autoFocus type="text" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Wash Dishes" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Description (optional)</label><textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="What needs to be done..." style={{ ...inputStyle, resize: 'none' }} rows={2} /></div>
 
-          <Field label="Description (optional)">
-            <textarea
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="What needs to be done..."
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-indigo-300"
-              rows={2}
-            />
-          </Field>
-
-          <Field label="Assign To">
-            <div className="flex gap-2">
+          <div>
+            <label style={labelStyle}>Assign To</label>
+            <div style={{ display: 'flex', gap: 8 }}>
               {kids.map(kid => (
-                <button
-                  key={kid.id}
-                  onClick={() => set('assignedTo', kid.id)}
-                  className="flex-1 flex flex-col items-center py-3 px-2 rounded-2xl border-2 transition-all"
-                  style={{
-                    borderColor: form.assignedTo === kid.id ? kid.color : '#e5e7eb',
-                    backgroundColor: form.assignedTo === kid.id ? kid.bg : 'white',
-                  }}
-                >
-                  <span className="text-2xl">{kid.emoji}</span>
-                  <span className="text-xs font-bold mt-1" style={{ color: form.assignedTo === kid.id ? kid.color : '#6b7280' }}>
-                    {kid.name}
-                  </span>
+                <button key={kid.id} onClick={() => set('assignedTo', kid.id)} style={{ flex: 1, padding: '12px 8px', borderRadius: 16, border: `2px solid ${form.assignedTo === kid.id ? kid.color : D.border}`, background: form.assignedTo === kid.id ? `${kid.color}15` : 'rgba(255,255,255,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 24 }}>{kid.emoji}</span>
+                  <span style={{ color: form.assignedTo === kid.id ? kid.color : D.textSec, fontSize: 12, fontWeight: 700 }}>{kid.name}</span>
                 </button>
               ))}
             </div>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Points">
-              <input
-                type="number"
-                value={form.points}
-                onChange={e => set('points', Number(e.target.value))}
-                min="5" max="100"
-                className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-base font-bold focus:outline-none focus:border-indigo-300"
-              />
-            </Field>
-            <Field label="Due Date">
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={e => set('dueDate', e.target.value)}
-                className="w-full border-2 border-gray-100 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-indigo-300"
-              />
-            </Field>
           </div>
 
-          <Field label="Repeats">
-            <div className="flex gap-2">
-              {['once', 'daily', 'weekly'].map(r => (
-                <button
-                  key={r}
-                  onClick={() => set('recurrence', r)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold capitalize border-2 transition-all ${
-                    form.recurrence === r
-                      ? 'bg-indigo-500 text-white border-indigo-500'
-                      : 'bg-white text-gray-600 border-gray-100'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Points</label><input type="number" value={form.points} onChange={e => set('points', Number(e.target.value))} min="5" max="100" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Due Date</label><input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle} /></div>
+          </div>
 
-          <Field label="Category">
-            <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label style={labelStyle}>Repeats</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['once', 'daily', 'weekly'].map(r => (
+                <button key={r} onClick={() => set('recurrence', r)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, border: `1px solid ${form.recurrence === r ? '#6366f1' : D.border}`, background: form.recurrence === r ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: form.recurrence === r ? '#818cf8' : D.textSec, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Category</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {Object.entries(CATEGORY_META).map(([key, meta]) => (
-                <button
-                  key={key}
-                  onClick={() => set('category', key)}
-                  className="flex flex-col items-center py-3 px-1 rounded-2xl border-2 transition-all"
-                  style={{
-                    borderColor: form.category === key ? meta.color : '#f3f4f6',
-                    backgroundColor: form.category === key ? meta.bg : 'white',
-                  }}
-                >
-                  <span className="text-2xl">{meta.emoji}</span>
-                  <span className="text-xs font-bold mt-1" style={{ color: form.category === key ? meta.color : '#9ca3af' }}>
-                    {meta.label}
-                  </span>
+                <button key={key} onClick={() => set('category', key)} style={{ padding: '10px 6px', borderRadius: 14, border: `1px solid ${form.category === key ? meta.color : D.border}`, background: form.category === key ? `${meta.color}18` : 'rgba(255,255,255,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 22 }}>{meta.emoji}</span>
+                  <span style={{ color: form.category === key ? meta.color : D.textSec, fontSize: 11, fontWeight: 700 }}>{meta.label}</span>
                 </button>
               ))}
             </div>
-          </Field>
+          </div>
         </div>
 
         <button
-          onClick={handleSubmit}
+          onClick={() => { if (!form.title.trim() || !form.assignedTo) return; addChore(form); onClose(); }}
           disabled={!form.title.trim()}
-          className="w-full mt-6 py-4 rounded-2xl font-black text-white text-base bg-indigo-500 disabled:opacity-40 shadow-lg"
+          style={{ width: '100%', marginTop: 20, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(99,102,241,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}
         >
           Assign Chore
         </button>
@@ -470,22 +387,11 @@ function AddChoreModal({ onClose }) {
   );
 }
 
-function Field({ label, children }) {
-  return (
-    <div>
-      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 function formatDate(dateStr) {
   if (!dateStr) return '–';
-  const today = new Date().toISOString().split('T')[0];
+  const today    = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  if (dateStr === today) return 'Today';
+  if (dateStr === today)    return 'Today';
   if (dateStr === tomorrow) return 'Tomorrow';
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

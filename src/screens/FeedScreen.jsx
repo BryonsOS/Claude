@@ -2,209 +2,139 @@ import { useApp } from '../context/AppContext';
 import { MemberAvatar } from '../components/MemberAvatar';
 import { CATEGORY_META } from '../data/initialData';
 
+const D = {
+  card:    '#161b22',
+  border:  'rgba(255,255,255,0.08)',
+  textPri: '#f0f6fc',
+  textSec: '#8b949e',
+};
+
+const EVENT_STYLE = {
+  chore_completed: { emoji: '✅', color: '#34d399', bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.2)'  },
+  chore_approved:  { emoji: '🌟', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)'  },
+  chore_rejected:  { emoji: '↩️', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.2)' },
+  chore_created:   { emoji: '📋', color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
+  reward_claimed:  { emoji: '🎁', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
+  reward_approved: { emoji: '🎉', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
+};
+
 export default function FeedScreen() {
-  const { activityFeed } = useApp();
+  const { activityFeed, members } = useApp();
+  const kids    = members.filter(m => m.role === 'child').sort((a, b) => b.points - a.points);
+  const topPts  = kids[0]?.points || 1;
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 8px' }}>
+
       {/* Header */}
-      <div className="px-4 pt-5 pb-5 flex items-center justify-between"
-        style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="text-2xl font-black text-white">Family Feed</h1>
-          <p className="text-blue-100 text-sm mt-0.5">Everything happening in real time</p>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 2px' }}>ACTIVITY</p>
+          <h1 style={{ color: D.textPri, fontSize: 26, fontWeight: 900, margin: 0 }}>Family Feed</h1>
         </div>
-        <div className="flex items-center gap-1.5 bg-white bg-opacity-20 px-3 py-1.5 rounded-xl">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-white text-xs font-bold">Live</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)', padding: '6px 12px', borderRadius: 20 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 6px #34d399' }} />
+          <span style={{ color: '#34d399', fontSize: 12, fontWeight: 700 }}>Live</span>
         </div>
       </div>
 
-      {/* Family Scoreboard */}
-      <FamilyScoreboard />
-
-      {/* Activity Feed */}
-      <div className="px-4 pb-4 space-y-3">
-        <h3 className="font-black text-gray-900 text-base">Recent Activity</h3>
-        {activityFeed.length === 0 ? (
-          <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
-            <span className="text-5xl">📢</span>
-            <p className="mt-3 font-bold text-gray-500">No activity yet.</p>
-            <p className="text-sm text-gray-400 mt-1">Get the kids started on some chores!</p>
-          </div>
-        ) : (
-          activityFeed.map(entry => (
-            <ActivityEntry key={entry.id} entry={entry} />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FamilyScoreboard() {
-  const { members } = useApp();
-  const kids = members.filter(m => m.role === 'child').sort((a, b) => b.points - a.points);
-  const topPoints = kids[0]?.points || 1;
-
-  if (kids.length === 0) return null;
-
-  const medals = ['🥇', '🥈', '🥉'];
-
-  return (
-    <div className="mx-4 my-4 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-4 py-3 flex items-center gap-2"
-        style={{ background: 'linear-gradient(90deg, #fbbf24, #f59e0b)' }}>
-        <span className="text-xl">🏆</span>
-        <span className="font-black text-white text-base">Leaderboard</span>
-      </div>
-      <div className="px-4 py-3 space-y-3">
-        {kids.map((kid, i) => (
-          <div key={kid.id} className="flex items-center gap-3">
-            <span className="text-xl w-7 flex-shrink-0">{medals[i] || `${i + 1}.`}</span>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-              style={{ backgroundColor: kid.bg }}>{kid.emoji}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-center mb-1">
-                <span className="font-bold text-gray-900">{kid.name}</span>
-                <span className="font-black text-sm" style={{ color: kid.color }}>✨ {kid.points}</span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5">
-                <div
-                  className="h-2.5 rounded-full transition-all"
-                  style={{
-                    width: `${Math.max((kid.points / Math.max(topPoints, 1)) * 100, 4)}%`,
-                    backgroundColor: kid.color,
-                  }}
-                />
-              </div>
+      {/* Leaderboard */}
+      {kids.length > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1))', borderBottom: `1px solid rgba(251,191,36,0.2)`, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 20 }}>🏆</span>
+              <span style={{ color: '#fbbf24', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Leaderboard</span>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {kids.map((kid, i) => (
+                <div key={kid.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 20, width: 24, flexShrink: 0 }}>{['🥇','🥈','🥉'][i] || `${i+1}.`}</span>
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: kid.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{kid.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <span style={{ color: D.textPri, fontWeight: 700, fontSize: 14 }}>{kid.name}</span>
+                      <span style={{ color: kid.color, fontWeight: 900, fontSize: 13 }}>✨ {kid.points}</span>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 99, height: 6 }}>
+                      <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max((kid.points / Math.max(topPts,1)) * 100, 3)}%`, transition: 'width 0.4s' }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        </section>
+      )}
+
+      {/* Activity */}
+      <section>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>RECENT ACTIVITY</p>
+        {activityFeed.length === 0 ? (
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: '40px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 44, marginBottom: 10 }}>📢</p>
+            <p style={{ color: D.textPri, fontWeight: 700, fontSize: 16 }}>No activity yet.</p>
+            <p style={{ color: D.textSec, fontSize: 13 }}>Assign some chores to get the feed going!</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {activityFeed.map(entry => <ActivityEntry key={entry.id} entry={entry} />)}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
 function ActivityEntry({ entry }) {
   const { members, chores, rewards } = useApp();
-  const actor = members.find(m => m.id === entry.memberId);
+  const actor  = members.find(m => m.id === entry.memberId);
   const target = members.find(m => m.id === entry.targetId);
-  const chore = chores.find(c => c.id === entry.choreId);
+  const chore  = chores.find(c => c.id === entry.choreId);
   const reward = rewards.find(r => r.id === entry.rewardId);
-  const cat = chore ? (CATEGORY_META[chore.category] || CATEGORY_META.cleaning) : null;
-
+  const cat    = chore ? (CATEGORY_META[chore.category] || CATEGORY_META.cleaning) : null;
   if (!actor) return null;
 
-  const configs = {
-    chore_completed: {
-      emoji: '✅',
-      bg: '#f0fdf4',
-      border: '#bbf7d0',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> marked{' '}
-          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
-          as complete {cat?.emoji}
-        </span>
-      ),
-    },
-    chore_approved: {
-      emoji: '🌟',
-      bg: '#fefce8',
-      border: '#fde68a',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> approved{' '}
-          <Strong name={target?.name} color={target?.color} />'s{' '}
-          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
-          <span className="font-black text-indigo-600">+{chore?.points}✨</span>
-        </span>
-      ),
-    },
-    chore_rejected: {
-      emoji: '↩️',
-      bg: '#fef2f2',
-      border: '#fecaca',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> sent back{' '}
-          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
-          for a redo
-        </span>
-      ),
-    },
-    chore_created: {
-      emoji: '📋',
-      bg: '#eef2ff',
-      border: '#c7d2fe',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> assigned{' '}
-          <em className="not-italic font-bold text-gray-800">"{chore?.title}"</em>{' '}
-          to <Strong name={target?.name} color={target?.color} />
-        </span>
-      ),
-    },
-    reward_claimed: {
-      emoji: '🎁',
-      bg: '#fdf4ff',
-      border: '#e9d5ff',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> claimed the{' '}
-          <em className="not-italic font-bold text-gray-800">"{reward?.title}"</em>{' '}
-          reward {reward?.emoji}
-        </span>
-      ),
-    },
-    reward_approved: {
-      emoji: '🎉',
-      bg: '#fdf4ff',
-      border: '#e9d5ff',
-      message: () => (
-        <span>
-          <Strong name={actor.name} color={actor.color} /> approved{' '}
-          <Strong name={target?.name} color={target?.color} />'s{' '}
-          <em className="not-italic font-bold text-gray-800">"{reward?.title}"</em>{' '}
-          reward {reward?.emoji}
-        </span>
-      ),
-    },
+  const style  = EVENT_STYLE[entry.type];
+  if (!style) return null;
+
+  const messages = {
+    chore_completed: <>{N(actor)} marked <Q>{chore?.title}</Q> as complete {cat?.emoji}</>,
+    chore_approved:  <>{N(actor)} approved {N(target)}'s <Q>{chore?.title}</Q> <span style={{ color: '#818cf8', fontWeight: 900 }}>+{chore?.points}✨</span></>,
+    chore_rejected:  <>{N(actor)} sent back <Q>{chore?.title}</Q> for a redo</>,
+    chore_created:   <>{N(actor)} assigned <Q>{chore?.title}</Q> to {N(target)}</>,
+    reward_claimed:  <>{N(actor)} claimed <Q>{reward?.title}</Q> {reward?.emoji}</>,
+    reward_approved: <>{N(actor)} approved {N(target)}'s <Q>{reward?.title}</Q> reward {reward?.emoji}</>,
   };
 
-  const cfg = configs[entry.type];
-  if (!cfg) return null;
-
   return (
-    <div
-      className="rounded-2xl p-4 border flex items-start gap-3"
-      style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
-    >
-      <div className="flex-shrink-0">
-        <MemberAvatar memberId={entry.memberId} size="md" />
+    <div style={{ background: style.bg, border: `1px solid ${style.border}`, borderRadius: 16, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <MemberAvatar memberId={entry.memberId} size="md" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ color: D.textPri, fontSize: 14, fontWeight: 500, lineHeight: 1.4, margin: '0 0 4px' }}>{messages[entry.type]}</p>
+        <p style={{ color: D.textSec, fontSize: 11, margin: 0 }}>{timeAgo(entry.ts)}</p>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 leading-relaxed font-medium">{cfg.message()}</p>
-        <p className="text-xs text-gray-400 mt-1.5 font-medium">{timeAgo(entry.ts)}</p>
-      </div>
-      <span className="text-2xl flex-shrink-0">{cfg.emoji}</span>
+      <span style={{ fontSize: 22, flexShrink: 0 }}>{style.emoji}</span>
     </div>
   );
 }
 
-function Strong({ name, color }) {
-  if (!name) return null;
-  return <strong style={{ color }}>{name}</strong>;
+function N(member) {
+  if (!member) return null;
+  return <strong style={{ color: member.color }}>{member.name}</strong>;
+}
+
+function Q({ children }) {
+  return <em style={{ fontStyle: 'normal', fontWeight: 700, color: '#f0f6fc' }}>"{children}"</em>;
 }
 
 function timeAgo(isoStr) {
   if (!isoStr) return '';
   const diff = Date.now() - new Date(isoStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  if (mins < 1)  return 'just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24)  return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }

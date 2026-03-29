@@ -2,39 +2,36 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 
+const D = {
+  card:    '#161b22',
+  border:  'rgba(255,255,255,0.08)',
+  textPri: '#f0f6fc',
+  textSec: '#8b949e',
+};
+
 export default function RewardsScreen() {
   const { currentUser } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Header */}
-      <div className="px-4 pt-5 pb-5 flex items-center justify-between"
-        style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)' }}>
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
-          <h1 className="text-2xl font-black text-white">Rewards</h1>
-          <p className="text-purple-200 text-sm mt-0.5">
-            {currentUser.role === 'parent' ? 'Manage what kids can earn' : 'Spend your hard-earned points'}
-          </p>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 2px' }}>REWARDS</p>
+          <h1 style={{ color: D.textPri, fontSize: 26, fontWeight: 900, margin: 0 }}>
+            {currentUser.role === 'parent' ? 'Manage Rewards' : 'Reward Shop'}
+          </h1>
         </div>
         {currentUser.role === 'parent' && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-white text-purple-600 font-bold px-4 py-2.5 rounded-2xl text-sm shadow-lg"
-          >
-            + Add
-          </button>
+          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 18px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 14, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #7c3aed, #db2777)', boxShadow: '0 4px 16px rgba(124,58,237,0.4)' }}>+ Add</button>
         )}
       </div>
 
       {currentUser.role === 'parent' ? <ParentRewards /> : <KidRewards />}
-
       {showAddModal && <AddRewardModal onClose={() => setShowAddModal(false)} />}
     </div>
   );
 }
-
-// ─── Parent Rewards View ──────────────────────────────────────────────────────
 
 function ParentRewards() {
   const { rewards, rewardClaims, approveRewardClaim, rejectRewardClaim, members } = useApp();
@@ -42,349 +39,214 @@ function ParentRewards() {
   const history = rewardClaims.filter(c => c.status !== 'pending');
 
   return (
-    <div className="px-4 pt-4 pb-4 space-y-5">
-      {/* Pending Claims */}
+    <div style={{ padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {pending.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="bg-amber-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black">
-              {pending.length}
-            </span>
-            <h3 className="font-black text-gray-900">Awaiting Approval</h3>
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ background: '#f59e0b', color: 'white', fontSize: 11, fontWeight: 900, width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pending.length}</span>
+            <p style={{ color: D.textPri, fontWeight: 900, fontSize: 16, margin: 0 }}>Awaiting Approval</p>
           </div>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pending.map(claim => {
-              const reward = rewards.find(r => r.id === claim.rewardId);
+              const reward  = rewards.find(r => r.id === claim.rewardId);
               const claimer = members.find(m => m.id === claim.claimedBy);
               if (!reward || !claimer) return null;
               return (
-                <div key={claim.id} className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-4">
-                    <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-3xl flex-shrink-0">
-                      {reward.emoji}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-black text-gray-900 text-base">{reward.title}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                <div key={claim.id} style={{ background: D.card, border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(245,158,11,0.1), 0 4px 16px rgba(245,158,11,0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 10px' }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(124,58,237,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>{reward.emoji}</div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px' }}>{reward.title}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <MemberAvatar memberId={claim.claimedBy} size="sm" />
-                        <MemberName memberId={claim.claimedBy} className="text-sm text-gray-600 font-medium" />
-                        <span className="text-gray-300">·</span>
-                        <span className="text-xs text-gray-400">{timeAgo(claim.claimedAt)}</span>
+                        <MemberName memberId={claim.claimedBy} style={{ color: D.textSec, fontSize: 12 }} />
+                        <span style={{ color: D.textSec, fontSize: 12 }}>· {timeAgo(claim.claimedAt)}</span>
                       </div>
                     </div>
-                    <span className="font-black text-purple-600">✨ {reward.pointCost}</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 900, fontSize: 14 }}>✨ {reward.pointCost}</span>
                   </div>
-                  <div className="flex gap-2 px-4 pb-4">
-                    <button
-                      onClick={() => approveRewardClaim(claim.id)}
-                      className="flex-1 py-3.5 rounded-xl font-black text-white text-sm bg-green-500"
-                    >
-                      Approve 🎉
-                    </button>
-                    <button
-                      onClick={() => rejectRewardClaim(claim.id)}
-                      className="flex-1 py-3.5 rounded-xl font-black text-red-500 text-sm bg-red-50"
-                    >
-                      Decline
-                    </button>
+                  <div style={{ display: 'flex', gap: 10, padding: '0 14px 14px' }}>
+                    <button onClick={() => approveRewardClaim(claim.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}>Approve 🎉</button>
+                    <button onClick={() => rejectRewardClaim(claim.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>Decline</button>
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* All Available Rewards */}
-      <div>
-        <h3 className="font-black text-gray-900 mb-3">Available Rewards</h3>
+      <section>
+        <p style={{ color: D.textPri, fontWeight: 900, fontSize: 16, margin: '0 0 12px' }}>Available Rewards</p>
         {rewards.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
-            <p className="text-4xl mb-2">🎁</p>
-            <p className="text-gray-500 font-medium">No rewards yet.</p>
-            <p className="text-gray-400 text-sm mt-1">Add rewards that kids can earn.</p>
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: '36px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 40, marginBottom: 10 }}>🎁</p>
+            <p style={{ color: D.textPri, fontWeight: 700 }}>No rewards yet.</p>
+            <p style={{ color: D.textSec, fontSize: 13 }}>Tap + Add to create rewards kids can earn.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {rewards.map(reward => (
-              <RewardCard key={reward.id} reward={reward} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {rewards.map(r => (
+              <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 18, padding: 16 }}>
+                <span style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>{r.emoji}</span>
+                <p style={{ color: D.textPri, fontWeight: 900, fontSize: 14, margin: '0 0 4px', lineHeight: 1.2 }}>{r.title}</p>
+                <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 8px', lineHeight: 1.4 }}>{r.description}</p>
+                <span style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', fontSize: 12, fontWeight: 900, padding: '3px 10px', borderRadius: 20 }}>✨ {r.pointCost} pts</span>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Claim History */}
       {history.length > 0 && (
-        <div>
-          <h3 className="font-black text-gray-900 mb-3">History</h3>
-          <div className="space-y-2">
-            {history.map(claim => {
+        <section>
+          <p style={{ color: D.textPri, fontWeight: 900, fontSize: 16, margin: '0 0 12px' }}>History</p>
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden' }}>
+            {history.map((claim, i) => {
               const reward = rewards.find(r => r.id === claim.rewardId);
               if (!reward) return null;
               return (
-                <div key={claim.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">
-                    {reward.emoji}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-800">{reward.title}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <MemberName memberId={claim.claimedBy} className="text-xs text-gray-400" />
-                      <span className="text-gray-300">·</span>
-                      <span className="text-xs text-gray-400">{timeAgo(claim.claimedAt)}</span>
+                <div key={claim.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < history.length - 1 ? `1px solid ${D.border}` : 'none' }}>
+                  <span style={{ fontSize: 24 }}>{reward.emoji}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: '0 0 1px' }}>{reward.title}</p>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <MemberName memberId={claim.claimedBy} style={{ color: D.textSec, fontSize: 11 }} />
+                      <span style={{ color: D.textSec, fontSize: 11 }}>· {timeAgo(claim.claimedAt)}</span>
                     </div>
                   </div>
-                  <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
-                    claim.status === 'approved'
-                      ? 'text-green-700 bg-green-50'
-                      : 'text-red-500 bg-red-50'
-                  }`}>
+                  <span style={{ fontSize: 11, fontWeight: 900, padding: '3px 9px', borderRadius: 20, background: claim.status === 'approved' ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)', color: claim.status === 'approved' ? '#34d399' : '#f87171' }}>
                     {claim.status === 'approved' ? '✓ Done' : '✗ Declined'}
                   </span>
                 </div>
               );
             })}
           </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function KidRewards() {
+  const { currentUser, rewards, rewardClaims, claimReward } = useApp();
+  const myPoints   = currentUser.points;
+  const color      = currentUser.color;
+  const myClaims   = rewardClaims.filter(c => c.claimedBy === currentUser.id);
+  const claimedIds = new Set(myClaims.filter(c => c.status === 'pending' || c.status === 'approved').map(c => c.rewardId));
+  const affordable = rewards.filter(r => r.pointCost <= myPoints && !claimedIds.has(r.id));
+  const saving     = rewards.filter(r => r.pointCost > myPoints && !claimedIds.has(r.id));
+
+  return (
+    <div style={{ padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Points hero tile */}
+      <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 24, padding: 20, boxShadow: `0 0 0 1px ${color}25, 0 8px 32px ${color}12` }}>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${color}, ${color}55)`, borderRadius: 2 }} />
+        </div>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>YOUR BALANCE</p>
+        <p style={{ color, fontSize: 48, fontWeight: 900, lineHeight: 1, margin: '0 0 4px' }}>✨ {myPoints}</p>
+        <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>habit points ready to spend</p>
+      </div>
+
+      {/* Pending claims */}
+      {myClaims.filter(c => c.status === 'pending').map(claim => {
+        const reward = rewards.find(r => r.id === claim.rewardId);
+        if (!reward) return null;
+        return (
+          <div key={claim.id} style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 18, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{reward.emoji}</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: '#fcd34d', fontWeight: 700, fontSize: 14, margin: '0 0 2px' }}>{reward.title}</p>
+              <p style={{ color: '#f59e0b', fontSize: 12, margin: 0 }}>⏳ Waiting for parent approval</p>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Can afford — full width cards */}
+      {affordable.length > 0 && (
+        <section>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>🎉 YOU CAN CLAIM NOW</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {affordable.map(r => (
+              <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 14, padding: '14px 14px', boxShadow: `0 2px 12px ${color}10` }}>
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: `${color}18`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>{r.emoji}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px' }}>{r.title}</p>
+                  <span style={{ background: `${color}18`, color, fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>✨ {r.pointCost}</span>
+                </div>
+                <button onClick={() => claimReward(r.id)} style={{ padding: '12px 18px', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 14px ${color}44`, border: 'none', cursor: 'pointer', flexShrink: 0 }}>Claim!</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Saving up — 2-col grid */}
+      {saving.length > 0 && (
+        <section>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>💪 SAVE UP FOR</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {saving.map(r => {
+              const needed   = r.pointCost - myPoints;
+              const progress = Math.min((myPoints / r.pointCost) * 100, 100);
+              return (
+                <div key={r.id} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 18, padding: 14, opacity: 0.85 }}>
+                  <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>{r.emoji}</span>
+                  <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: '0 0 4px', lineHeight: 1.2 }}>{r.title}</p>
+                  <p style={{ color: '#a78bfa', fontWeight: 900, fontSize: 12, margin: '0 0 10px' }}>✨ {r.pointCost}</p>
+                  <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, height: 5, marginBottom: 4 }}>
+                    <div style={{ background: color, height: 5, borderRadius: 99, width: `${progress}%` }} />
+                  </div>
+                  <p style={{ color: D.textSec, fontSize: 11 }}>{needed} more needed</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {rewards.length === 0 && (
+        <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: '36px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 40, marginBottom: 10 }}>🎁</p>
+          <p style={{ color: D.textPri, fontWeight: 700 }}>No rewards yet.</p>
+          <p style={{ color: D.textSec, fontSize: 13 }}>Ask a parent to add some!</p>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Kid Rewards View ─────────────────────────────────────────────────────────
-
-function KidRewards() {
-  const { currentUser, rewards, rewardClaims, claimReward } = useApp();
-  const myPoints = currentUser.points;
-
-  const myClaims = rewardClaims.filter(c => c.claimedBy === currentUser.id);
-  const claimedIds = new Set(myClaims.filter(c => c.status === 'pending' || c.status === 'approved').map(c => c.rewardId));
-
-  const affordable = rewards.filter(r => r.pointCost <= myPoints && !claimedIds.has(r.id));
-  const saving = rewards.filter(r => r.pointCost > myPoints && !claimedIds.has(r.id));
-
-  return (
-    <div className="pb-4">
-      {/* Points hero */}
-      <div className="px-4 py-5"
-        style={{ background: `linear-gradient(135deg, ${currentUser.color} 0%, ${currentUser.color}bb 100%)` }}>
-        <p className="text-white text-opacity-80 text-sm font-medium">Your Balance</p>
-        <p className="text-5xl font-black text-white mt-1">✨ {myPoints}</p>
-        <p className="text-white text-opacity-60 text-xs mt-1">habit points</p>
-      </div>
-
-      <div className="px-4 pt-4 space-y-5">
-        {/* Pending Claims */}
-        {myClaims.filter(c => c.status === 'pending').map(claim => {
-          const reward = rewards.find(r => r.id === claim.rewardId);
-          if (!reward) return null;
-          return (
-            <div key={claim.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-2xl">
-                {reward.emoji}
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-amber-900">{reward.title}</p>
-                <p className="text-xs text-amber-600 font-medium mt-0.5">⏳ Waiting for parent approval</p>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Affordable Rewards */}
-        {affordable.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="font-black text-gray-900">You Can Get These</h3>
-              <span className="text-lg">🎉</span>
-            </div>
-            <div className="space-y-3">
-              {affordable.map(reward => (
-                <AffordableRewardCard
-                  key={reward.id}
-                  reward={reward}
-                  onClaim={() => claimReward(reward.id)}
-                  color={currentUser.color}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Saving Up */}
-        {saving.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="font-black text-gray-900">Save Up For</h3>
-              <span className="text-lg">💪</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {saving.map(reward => (
-                <SavingRewardCard
-                  key={reward.id}
-                  reward={reward}
-                  myPoints={myPoints}
-                  color={currentUser.color}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {rewards.length === 0 && (
-          <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
-            <p className="text-4xl mb-2">🎁</p>
-            <p className="text-gray-500 font-medium">No rewards yet.</p>
-            <p className="text-gray-400 text-sm mt-1">Ask a parent to add some!</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RewardCard({ reward }) {
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <div className="text-4xl mb-2">{reward.emoji}</div>
-      <p className="font-bold text-gray-900 leading-tight">{reward.title}</p>
-      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{reward.description}</p>
-      <p className="font-black text-purple-600 text-sm mt-2">✨ {reward.pointCost} pts</p>
-    </div>
-  );
-}
-
-function AffordableRewardCard({ reward, onClaim, color }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 px-4 py-4">
-      <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-3xl flex-shrink-0">
-        {reward.emoji}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-gray-900 leading-tight">{reward.title}</p>
-        <p className="font-black text-purple-600 text-sm mt-0.5">✨ {reward.pointCost}</p>
-      </div>
-      <button
-        onClick={onClaim}
-        className="px-4 py-3 rounded-xl text-sm font-black text-white flex-shrink-0 shadow-sm"
-        style={{ backgroundColor: color }}
-      >
-        Claim!
-      </button>
-    </div>
-  );
-}
-
-function SavingRewardCard({ reward, myPoints, color }) {
-  const needed = reward.pointCost - myPoints;
-  const progress = Math.min((myPoints / reward.pointCost) * 100, 100);
-
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 opacity-80">
-      <div className="text-3xl mb-2">{reward.emoji}</div>
-      <p className="font-bold text-gray-800 text-sm leading-tight">{reward.title}</p>
-      <p className="font-black text-purple-600 text-xs mt-1">✨ {reward.pointCost}</p>
-      <div className="mt-3">
-        <div className="w-full bg-gray-100 rounded-full h-2 mb-1">
-          <div className="h-2 rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: color }} />
-        </div>
-        <p className="text-xs text-gray-400 font-medium">{needed} more needed</p>
-      </div>
-    </div>
-  );
-}
-
 function AddRewardModal({ onClose }) {
   const { addReward } = useApp();
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    pointCost: 50,
-    emoji: '🎁',
-  });
-
+  const [form, setForm] = useState({ title: '', description: '', pointCost: 50, emoji: '🎁' });
   const EMOJIS = ['🎮', '🍕', '🎬', '🌙', '🍦', '🏖️', '🎁', '🎯', '🛍️', '🎪', '🎠', '🏆'];
-
-  const handleSubmit = () => {
-    if (!form.title.trim()) return;
-    addReward(form);
-    onClose();
-  };
-
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
+  const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50"
-      onClick={onClose}>
-      <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10"
-        onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-        <h3 className="text-xl font-black text-gray-900 mb-5">Add a Reward</h3>
-
-        <div className="space-y-5">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
+        <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 20px' }}>Add a Reward</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Icon</label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJIS.map(e => (
-                <button
-                  key={e}
-                  onClick={() => set('emoji', e)}
-                  className={`w-12 h-12 rounded-xl text-2xl flex items-center justify-center border-2 transition-all ${
-                    form.emoji === e ? 'border-purple-400 bg-purple-50' : 'border-gray-100 bg-gray-50'
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
+            <label style={labelStyle}>Icon</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {EMOJIS.map(e => <button key={e} onClick={() => set('emoji', e)} style={{ width: 46, height: 46, borderRadius: 14, fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: form.emoji === e ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.06)', border: `2px solid ${form.emoji === e ? '#7c3aed' : 'transparent'}`, cursor: 'pointer' }}>{e}</button>)}
             </div>
           </div>
-
+          <div><label style={labelStyle}>Title</label><input autoFocus type="text" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Extra Screen Time" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Description</label><input type="text" value={form.description} onChange={e => set('description', e.target.value)} placeholder="What do they get?" style={inputStyle} /></div>
           <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Title</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={e => set('title', e.target.value)}
-              placeholder="e.g. Extra Screen Time"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-base font-medium focus:outline-none focus:border-purple-300"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Description</label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="What do they get?"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-300"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-              Points Required: <span className="text-purple-600">{form.pointCost}</span>
-            </label>
-            <input
-              type="range"
-              value={form.pointCost}
-              onChange={e => set('pointCost', Number(e.target.value))}
-              min="10" max="300" step="5"
-              className="w-full accent-purple-500"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>10</span><span>150</span><span>300</span>
-            </div>
+            <label style={labelStyle}>Points Required: <span style={{ color: '#a78bfa' }}>{form.pointCost}</span></label>
+            <input type="range" value={form.pointCost} onChange={e => set('pointCost', Number(e.target.value))} min="10" max="300" step="5" style={{ width: '100%', accentColor: '#7c3aed' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>10</span><span>150</span><span>300</span></div>
           </div>
         </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={!form.title.trim()}
-          className="w-full mt-6 py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)' }}
-        >
+        <button onClick={() => { if (!form.title.trim()) return; addReward(form); onClose(); }} disabled={!form.title.trim()} style={{ width: '100%', marginTop: 20, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #7c3aed, #db2777)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}>
           Add Reward
         </button>
       </div>
@@ -396,9 +258,9 @@ function timeAgo(isoStr) {
   if (!isoStr) return '';
   const diff = Date.now() - new Date(isoStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  if (mins < 1)  return 'just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24)  return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
