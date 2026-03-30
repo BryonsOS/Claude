@@ -4,73 +4,73 @@ import { useApp, PRESET_COLORS } from '../context/AppContext';
 const PARENT_EMOJIS = ['👩','👨','👩‍🦱','👨‍🦱','👩‍🦰','👨‍🦰','👩‍🦳','👨‍🦳','👵','👴','🧑','🧔'];
 const KID_EMOJIS    = ['👧','👦','🧒','👧🏽','👦🏽','🧒🏽','👧🏿','👦🏿','🧒🏿','👶'];
 
+const BG = 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)';
+
 export default function OnboardingScreen() {
   const { completeOnboarding, joinFamily } = useApp();
   const [mode, setMode] = useState(null);
 
   if (mode === 'join')   return <JoinFlow onBack={() => setMode(null)} onJoin={joinFamily} />;
   if (mode === 'create') return <CreateFlow onBack={() => setMode(null)} onCreate={completeOnboarding} />;
-
   return <WelcomeScreen onCreate={() => setMode('create')} onJoin={() => setMode('join')} />;
 }
 
-// ─── Welcome ──────────────────────────────────────────────────────────────────
-
 function WelcomeScreen({ onCreate, onJoin }) {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' }}
-    >
-      <div className="w-full max-w-sm">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: BG }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div
-            className="w-24 h-24 rounded-3xl flex items-center justify-center text-5xl mx-auto mb-4 shadow-2xl"
-            style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              boxShadow: '0 12px 40px rgba(99,102,241,0.6)',
-            }}
-          >
-            🏠
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tight">ChoreFamily</h1>
-          <p className="text-indigo-300 mt-2 font-medium">Build habits. Earn rewards. Together.</p>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{
+            width: 96, height: 96, borderRadius: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 48, margin: '0 auto 16px',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            boxShadow: '0 12px 40px rgba(99,102,241,0.6)',
+          }}>🏠</div>
+          <h1 style={{ color: '#ffffff', fontSize: 36, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-0.02em' }}>ChoreFamily</h1>
+          <p style={{ color: '#a5b4fc', fontSize: 15, fontWeight: 600, margin: 0 }}>Build habits. Earn rewards. Together.</p>
         </div>
 
-        {/* Feature tiles */}
-        <div
-          className="rounded-3xl p-5 mb-5 space-y-3"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-        >
-          <Feature emoji="✅" title="Assign & track chores" desc="Parents assign, kids complete, parents approve." />
-          <Feature emoji="✨" title="Habit points" desc="Every approved chore earns points that stack up." />
-          <Feature emoji="🎁" title="Real rewards" desc="Kids spend points on rewards you decide." />
-          <Feature emoji="📱" title="Synced everywhere" desc="All phones update together in real time." />
+        {/* Feature list */}
+        <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: '20px 20px', marginBottom: 20 }}>
+          {[
+            { emoji: '✅', title: 'Assign & track chores', desc: 'Parents assign, kids complete, parents approve.' },
+            { emoji: '✨', title: 'Habit points', desc: 'Every approved chore earns points that stack up.' },
+            { emoji: '🎁', title: 'Real rewards', desc: 'Kids spend points on rewards you decide.' },
+            { emoji: '📱', title: 'Synced everywhere', desc: 'All phones update together in real time.' },
+          ].map(f => (
+            <div key={f.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+              <span style={{ fontSize: 20, marginTop: 1 }}>{f.emoji}</span>
+              <div>
+                <p style={{ color: '#ffffff', fontWeight: 700, fontSize: 14, margin: '0 0 2px' }}>{f.title}</p>
+                <p style={{ color: '#a5b4fc', fontSize: 12, margin: 0 }}>{f.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Buttons */}
-        <button
-          onClick={onCreate}
-          className="w-full py-4 rounded-2xl font-black text-indigo-700 bg-white text-lg mb-3 active:scale-95 transition-transform shadow-2xl"
-          style={{ boxShadow: '0 8px 30px rgba(255,255,255,0.2)' }}
-        >
+        <button onClick={onCreate} style={{
+          width: '100%', padding: '18px 0', borderRadius: 20, fontWeight: 900,
+          fontSize: 17, border: 'none', cursor: 'pointer', marginBottom: 12,
+          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          color: 'white', boxShadow: '0 8px 30px rgba(99,102,241,0.5)',
+        }}>
           Set Up My Family →
         </button>
-        <button
-          onClick={onJoin}
-          className="w-full py-4 rounded-2xl font-black text-white text-base active:scale-95 transition-transform"
-          style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}
-        >
+        <button onClick={onJoin} style={{
+          width: '100%', padding: '16px 0', borderRadius: 20, fontWeight: 700,
+          fontSize: 15, border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+          background: 'rgba(255,255,255,0.1)', color: '#ffffff',
+        }}>
           Join an Existing Family
         </button>
       </div>
     </div>
   );
 }
-
-// ─── Create flow ──────────────────────────────────────────────────────────────
 
 function CreateFlow({ onBack, onCreate }) {
   const [step, setStep]       = useState(0);
@@ -83,8 +83,7 @@ function CreateFlow({ onBack, onCreate }) {
   const canNext1 = kids.some(k => k.name.trim());
 
   const handleFinish = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     const allMembers = [
       ...parents.filter(p => p.name.trim()).map((p, i) => ({ ...p, name: p.name.trim(), ...PRESET_COLORS[i % PRESET_COLORS.length] })),
       ...kids.filter(k => k.name.trim()).map((k, i) => ({ ...k, name: k.name.trim(), ...PRESET_COLORS[(parents.length + i) % PRESET_COLORS.length] })),
@@ -93,84 +92,68 @@ function CreateFlow({ onBack, onCreate }) {
       const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000));
       await Promise.race([onCreate(allMembers), timeout]);
     } catch (err) {
-      setError(
-        err.message === 'timeout'
-          ? 'Connection timed out. Make sure the Firebase secrets are added in GitHub and the site was redeployed.'
-          : `Setup failed: ${err.message}`
-      );
+      setError(err.message === 'timeout'
+        ? 'Connection timed out. Make sure the Firebase secrets are added in GitHub and the site was redeployed.'
+        : `Setup failed: ${err.message}`);
       setLoading(false);
     }
   };
 
-  const bg = 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)';
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: bg }}>
-      <div className="w-full max-w-sm">
-        {/* Steps */}
-        <div className="flex justify-center gap-2 mb-6">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: BG }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+
+        {/* Step dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
           {[0, 1].map(i => (
-            <div
-              key={i}
-              className="h-2 rounded-full transition-all"
-              style={{
-                width: step === i ? '2rem' : '0.5rem',
-                background: step >= i ? 'white' : 'rgba(255,255,255,0.25)',
-              }}
-            />
+            <div key={i} style={{
+              height: 8, borderRadius: 4,
+              width: step === i ? 32 : 8,
+              background: step >= i ? 'white' : 'rgba(255,255,255,0.25)',
+              transition: 'width 0.3s, background 0.3s',
+            }} />
           ))}
         </div>
 
-        {step === 0 && (
-          <div className="bg-white rounded-3xl p-6">
-            <h2 className="text-xl font-black text-gray-900 mb-1">Add parents</h2>
-            <p className="text-sm text-gray-500 mb-5">Who manages the family?</p>
-            <MemberList members={parents} setMembers={setParents} emojiOptions={PARENT_EMOJIS} />
-            <AddBtn onClick={() => setParents(p => [...p, { id: `p${Date.now()}`, name: '', emoji: '👨', role: 'parent' }])} label="Add another parent" />
-            <div className="flex gap-3 mt-5">
-              <button onClick={onBack} className="px-5 py-3 rounded-xl text-gray-400 text-sm font-bold">Back</button>
-              <button
-                onClick={() => setStep(1)}
-                disabled={!canNext0}
-                className="flex-1 py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 active:scale-95 transition-transform"
-                style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="bg-white rounded-3xl p-6">
-            <h2 className="text-xl font-black text-gray-900 mb-1">Add kids</h2>
-            <p className="text-sm text-gray-500 mb-5">Who will be doing chores?</p>
-            <MemberList members={kids} setMembers={setKids} emojiOptions={KID_EMOJIS} />
-            <AddBtn onClick={() => setKids(k => [...k, { id: `k${Date.now()}`, name: '', emoji: '👦', role: 'child' }])} label="Add another kid" />
-            {error && (
-              <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                <p className="text-xs text-red-600">{error}</p>
+        {/* Card */}
+        <div style={{ background: '#1a2234', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+          {step === 0 && (
+            <>
+              <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Add parents</h2>
+              <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>Who manages the family?</p>
+              <MemberList members={parents} setMembers={setParents} emojiOptions={PARENT_EMOJIS} />
+              <AddBtn onClick={() => setParents(p => [...p, { id: `p${Date.now()}`, name: '', emoji: '👨', role: 'parent' }])} label="Add another parent" />
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button onClick={onBack} style={{ padding: '12px 16px', borderRadius: 16, color: '#8b949e', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
+                <button onClick={() => setStep(1)} disabled={!canNext0} style={{ flex: 1, padding: '16px 0', borderRadius: 20, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: canNext0 ? 'pointer' : 'default', opacity: canNext0 ? 1 : 0.4, boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>Next →</button>
               </div>
-            )}
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setStep(0)} disabled={loading} className="px-5 py-3 rounded-xl text-gray-400 text-sm font-bold">Back</button>
-              <button
-                onClick={handleFinish}
-                disabled={!canNext1 || loading}
-                className="flex-1 py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 active:scale-95 transition-transform"
-                style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
-              >
-                {loading ? '⏳ Saving…' : 'Let\'s Go! 🚀'}
-              </button>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Add kids</h2>
+              <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>Who will be doing chores?</p>
+              <MemberList members={kids} setMembers={setKids} emojiOptions={KID_EMOJIS} />
+              <AddBtn onClick={() => setKids(k => [...k, { id: `k${Date.now()}`, name: '', emoji: '👦', role: 'child' }])} label="Add another kid" />
+              {error && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14 }}>
+                  <p style={{ color: '#fca5a5', fontSize: 13, margin: 0 }}>{error}</p>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button onClick={() => setStep(0)} disabled={loading} style={{ padding: '12px 16px', borderRadius: 16, color: '#8b949e', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
+                <button onClick={handleFinish} disabled={!canNext1 || loading} style={{ flex: 1, padding: '16px 0', borderRadius: 20, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: canNext1 && !loading ? 'pointer' : 'default', opacity: canNext1 && !loading ? 1 : 0.4, boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
+                  {loading ? '⏳ Saving…' : "Let's Go! 🚀"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
-// ─── Join flow ────────────────────────────────────────────────────────────────
 
 function JoinFlow({ onBack, onJoin }) {
   const [code,    setCode]    = useState('');
@@ -182,8 +165,7 @@ function JoinFlow({ onBack, onJoin }) {
   const handleJoin = async () => {
     const clean = code.replace(/[^A-Z0-9]/gi, '').toUpperCase();
     if (clean.length !== 8) { setError('Enter the full 8-character code (e.g. ABCD-1234)'); return; }
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       await onJoin(`${clean.slice(0, 4)}-${clean.slice(4)}`);
     } catch {
@@ -193,16 +175,13 @@ function JoinFlow({ onBack, onJoin }) {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: 'linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' }}
-    >
-      <div className="w-full max-w-sm">
-        <div className="bg-white rounded-3xl p-6">
-          <h2 className="text-xl font-black text-gray-900 mb-1">Join a Family</h2>
-          <p className="text-sm text-gray-500 mb-5">
-            Ask a parent for your code — use the <strong>Parent Code</strong> for full access or the{' '}
-            <strong>Kid Code</strong> for a kids-only device.
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: BG }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+        <div style={{ background: '#1a2234', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Join a Family</h2>
+          <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>
+            Ask a parent for your code — use the <span style={{ color: '#f0f6fc', fontWeight: 700 }}>Parent Code</span> for full access or the{' '}
+            <span style={{ color: '#f0f6fc', fontWeight: 700 }}>Kid Code</span> for a kids-only device.
           </p>
 
           <input
@@ -211,35 +190,43 @@ function JoinFlow({ onBack, onJoin }) {
             onChange={e => setCode(e.target.value.replace(/[^A-Z0-9-]/gi, '').slice(0, 9))}
             placeholder="ABCD-1234"
             maxLength={9}
-            className="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 text-2xl font-black text-center tracking-widest focus:outline-none focus:border-indigo-400 uppercase"
             autoFocus
             autoCapitalize="characters"
+            style={{
+              width: '100%', padding: '16px 0', borderRadius: 16,
+              fontSize: 28, fontWeight: 900, textAlign: 'center', letterSpacing: '0.15em',
+              background: 'rgba(255,255,255,0.06)', border: '2px solid rgba(255,255,255,0.15)',
+              color: '#f0f6fc', outline: 'none', boxSizing: 'border-box',
+              textTransform: 'uppercase',
+            }}
           />
 
-          {error && <p className="text-red-500 text-sm mt-2 text-center font-medium">{error}</p>}
+          {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 8, textAlign: 'center', fontWeight: 600 }}>{error}</p>}
 
-          <button
-            onClick={handleJoin}
-            disabled={loading}
-            className="w-full mt-4 py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 active:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
-          >
+          <button onClick={handleJoin} disabled={loading} style={{
+            width: '100%', marginTop: 16, padding: '16px 0', borderRadius: 20,
+            fontWeight: 900, color: 'white', fontSize: 16, border: 'none',
+            cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1,
+            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+            boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+          }}>
             {loading ? 'Joining…' : 'Join Family →'}
           </button>
-          <button onClick={onBack} className="w-full mt-3 py-3 text-gray-400 text-sm font-bold">
-            ← Back
-          </button>
+
+          <button onClick={onBack} style={{
+            width: '100%', marginTop: 10, padding: '12px 0',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: '#8b949e', fontSize: 14, fontWeight: 700,
+          }}>← Back</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Shared helpers ───────────────────────────────────────────────────────────
-
 function MemberList({ members, setMembers, emojiOptions }) {
   return (
-    <div className="space-y-3">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {members.map((m, i) => (
         <MemberRow
           key={m.id}
@@ -256,12 +243,14 @@ function MemberList({ members, setMembers, emojiOptions }) {
 function MemberRow({ member, emojiOptions, onChange, onRemove }) {
   const [showEmojis, setShowEmojis] = useState(false);
   return (
-    <div className="bg-gray-50 rounded-2xl p-3">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setShowEmojis(v => !v)}
-          className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl shadow-sm flex-shrink-0 active:scale-95 transition-transform"
-        >
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => setShowEmojis(v => !v)} style={{
+          width: 48, height: 48, borderRadius: 14, fontSize: 24,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+          cursor: 'pointer', flexShrink: 0,
+        }}>
           {member.emoji}
         </button>
         <input
@@ -270,22 +259,26 @@ function MemberRow({ member, emojiOptions, onChange, onRemove }) {
           onChange={e => onChange({ name: e.target.value })}
           placeholder="Name"
           maxLength={20}
-          className="flex-1 bg-white border-2 border-gray-100 rounded-xl px-3 py-3 text-base font-bold focus:outline-none focus:border-indigo-400"
+          style={{
+            flex: 1, padding: '12px 14px', borderRadius: 14, fontSize: 15, fontWeight: 700,
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+            color: '#f0f6fc', outline: 'none',
+          }}
         />
         {onRemove && (
-          <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg px-1 py-2">✕</button>
+          <button onClick={onRemove} style={{ color: '#8b949e', fontSize: 16, padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
         )}
       </div>
       {showEmojis && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {emojiOptions.map(e => (
-            <button
-              key={e}
-              onClick={() => { onChange({ emoji: e }); setShowEmojis(false); }}
-              className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${member.emoji === e ? 'bg-indigo-100 ring-2 ring-indigo-400 scale-110' : 'bg-white'}`}
-            >
-              {e}
-            </button>
+            <button key={e} onClick={() => { onChange({ emoji: e }); setShowEmojis(false); }} style={{
+              width: 40, height: 40, borderRadius: 12, fontSize: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: member.emoji === e ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.08)',
+              border: member.emoji === e ? '2px solid #6366f1' : '1px solid rgba(255,255,255,0.1)',
+              cursor: 'pointer',
+            }}>{e}</button>
           ))}
         </div>
       )}
@@ -295,23 +288,12 @@ function MemberRow({ member, emojiOptions, onChange, onRemove }) {
 
 function AddBtn({ onClick, label }) {
   return (
-    <button
-      onClick={onClick}
-      className="mt-3 w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-400 font-bold active:scale-95 transition-transform"
-    >
+    <button onClick={onClick} style={{
+      marginTop: 10, width: '100%', padding: '12px 0', borderRadius: 16,
+      border: '2px dashed rgba(255,255,255,0.2)', background: 'transparent',
+      color: '#8b949e', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+    }}>
       + {label}
     </button>
-  );
-}
-
-function Feature({ emoji, title, desc }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="text-xl mt-0.5">{emoji}</span>
-      <div>
-        <p className="font-bold text-white text-sm">{title}</p>
-        <p className="text-xs text-indigo-300 mt-0.5">{desc}</p>
-      </div>
-    </div>
   );
 }
