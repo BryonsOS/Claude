@@ -101,13 +101,19 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
   const { currentUser, chores, members } = useApp();
   const isParent = currentUser.role === 'parent';
 
+  // Open chores: unassigned and pending — visible to everyone
+  const openChores = chores.filter(c => !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending'));
+
   const filtered = chores.filter(c => {
+    if (!c.assignedTo && c.status === 'pending') return false; // handled separately as open
     if (!isParent && c.assignedTo !== currentUser.id) return false;
     if (filter === 'all') return true;
     return c.status === filter;
   });
 
-  if (filtered.length === 0) {
+  const allEmpty = filtered.length === 0 && openChores.length === 0;
+
+  if (allEmpty) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 16px' }}>
         <p style={{ fontSize: 48, marginBottom: 12 }}>✨</p>
@@ -123,6 +129,22 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
     const kids = members.filter(m => m.role === 'child');
     return (
       <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Open / unassigned chores */}
+        {openChores.length > 0 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(251,191,36,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🌟</div>
+              <span style={{ color: D.textPri, fontWeight: 900, fontSize: 15 }}>Open — Anyone</span>
+              <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{openChores.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {openChores.map(c => (
+                <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Per-kid assigned chores */}
         {kids.map(kid => {
           const kidChores = filtered.filter(c => c.assignedTo === kid.id);
           if (!kidChores.length) return null;
@@ -135,11 +157,7 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {kidChores.map(c => (
-                  <ChoreCard key={c.id} chore={c}
-                    onClick={() => onSelectChore(c)}
-                    onEdit={() => onEditChore(c)}
-                    onDelete={() => onDeleteChore(c)}
-                  />
+                  <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />
                 ))}
               </div>
             </div>
@@ -150,63 +168,97 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
   }
 
   return (
-    <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {filtered.map(c => (
-        <ChoreCard key={c.id} chore={c}
-          onClick={() => onSelectChore(c)}
-          onEdit={() => onEditChore(c)}
-          onDelete={() => onDeleteChore(c)}
-        />
-      ))}
+    <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Open chores — kid view */}
+      {!isParent && openChores.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>🌟 Available to Claim</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {openChores.map(c => (
+              <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} isOpen />
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Assigned chores */}
+      {filtered.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {!isParent && openChores.length > 0 && (
+            <span style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>YOUR CHORES</span>
+          )}
+          {filtered.map(c => (
+            <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function ChoreCard({ chore, onClick, onEdit, onDelete }) {
-  const { currentUser, completeChore, approveChore } = useApp();
+function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
+  const { currentUser, completeChore, approveChore, claimOpenChore } = useApp();
   const cat       = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent  = currentUser.role === 'parent';
   const isMyChore = chore.assignedTo === currentUser.id;
+  const isOpenChore = !chore.assignedTo && chore.status === 'pending';
   const st        = STATUS_MAP[chore.status] || STATUS_MAP.pending;
-  const isOverdue = chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
+  const isOverdue = chore.dueDate && chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
   const color     = currentUser.color;
 
   return (
-    <div
-      style={{
-        background: D.card, border: `1px solid ${D.border}`,
-        borderRadius: 20, overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-      }}
-    >
+    <div style={{
+      background: D.card,
+      border: isOpenChore ? '1px solid rgba(251,191,36,0.25)' : `1px solid ${D.border}`,
+      borderRadius: 20, overflow: 'hidden',
+      boxShadow: isOpenChore ? '0 2px 12px rgba(251,191,36,0.08)' : '0 2px 8px rgba(0,0,0,0.3)',
+    }}>
+      {/* Gold top bar for open chores */}
+      {isOpenChore && (
+        <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' }} />
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 10px' }}>
         <div style={{ width: 46, height: 46, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>{cat.emoji}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: 0, lineHeight: 1.2 }}>{chore.title}</p>
-            <span style={{ background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0, letterSpacing: '0.03em' }}>{st.label}</span>
+            {isOpenChore
+              ? <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>OPEN</span>
+              : <span style={{ background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0, letterSpacing: '0.03em' }}>{st.label}</span>
+            }
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
-            <span style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{chore.points} pts</span>
-            {isParent && <MemberName memberId={chore.assignedTo} className="" style={{ color: D.textSec, fontSize: 11 }} />}
-            <span style={{ color: isOverdue ? '#f87171' : D.textSec, fontSize: 11, fontWeight: isOverdue ? 700 : 400 }}>
+            <span style={{ background: isOpenChore ? 'rgba(251,191,36,0.15)' : 'rgba(99,102,241,0.15)', color: isOpenChore ? '#fbbf24' : '#818cf8', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{chore.points} pts</span>
+            {isParent && !isOpenChore && <MemberName memberId={chore.assignedTo} className="" style={{ color: D.textSec, fontSize: 11 }} />}
+            {isParent && isOpenChore && <span style={{ color: '#fbbf24', fontSize: 11, fontWeight: 600 }}>🌟 First to finish wins</span>}
+            {chore.dueDate && <span style={{ color: isOverdue ? '#f87171' : D.textSec, fontSize: 11, fontWeight: isOverdue ? 700 : 400 }}>
               {isOverdue ? '⚠️ Overdue' : `📅 ${formatDate(chore.dueDate)}`}
-            </span>
+            </span>}
           </div>
         </div>
       </div>
 
       {/* Actions */}
       <div style={{ padding: '0 14px 14px', display: 'flex', gap: 8 }}>
+        {/* Kid: claim an open chore */}
+        {!isParent && isOpenChore && (
+          <button onClick={() => claimOpenChore(chore.id)} style={{
+            flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14,
+            background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+            boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer',
+          }}>
+            🙋 I Did It! Claim Points
+          </button>
+        )}
+        {/* Kid: complete an assigned chore */}
         {!isParent && isMyChore && chore.status === 'pending' && (
-          <button
-            onClick={() => completeChore(chore.id)}
-            style={{
-              flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14,
-              background: `linear-gradient(135deg, ${color}, ${color}bb)`,
-              boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer',
-            }}
-          >
+          <button onClick={() => completeChore(chore.id)} style={{
+            flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14,
+            background: `linear-gradient(135deg, ${color}, ${color}bb)`,
+            boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer',
+          }}>
             Mark Done ✓
           </button>
         )}
@@ -215,36 +267,22 @@ function ChoreCard({ chore, onClick, onEdit, onDelete }) {
             ⏳ Waiting for parent
           </div>
         )}
+        {/* Parent: approve/reject completed chore */}
         {isParent && chore.status === 'completed' && (
           <>
-            <button
-              onClick={() => approveChore(chore.id)}
-              style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}
-            >
+            <button onClick={() => approveChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}>
               Approve ✓
             </button>
-            <button
-              onClick={onClick}
-              style={{ padding: '13px 18px', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}
-            >
+            <button onClick={onClick} style={{ padding: '13px 18px', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>
               Reject
             </button>
           </>
         )}
+        {/* Parent: edit/delete pending chores */}
         {isParent && chore.status !== 'completed' && (
           <>
-            <button
-              onClick={onEdit}
-              style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', cursor: 'pointer' }}
-            >
-              ✏️ Edit
-            </button>
-            <button
-              onClick={onDelete}
-              style={{ padding: '11px 16px', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', cursor: 'pointer' }}
-            >
-              🗑
-            </button>
+            <button onClick={onEdit} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', cursor: 'pointer' }}>✏️ Edit</button>
+            <button onClick={onDelete} style={{ padding: '11px 16px', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', cursor: 'pointer' }}>🗑</button>
           </>
         )}
       </div>
@@ -435,6 +473,11 @@ function AddChoreModal({ onClose }) {
           <div>
             <label style={labelStyle}>Assign To</label>
             <div style={{ display: 'flex', gap: 8 }}>
+              {/* Open / anyone option */}
+              <button onClick={() => set('assignedTo', null)} style={{ flex: 1, padding: '12px 8px', borderRadius: 16, border: `2px solid ${form.assignedTo === null ? '#fbbf24' : D.border}`, background: form.assignedTo === null ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 24 }}>🌟</span>
+                <span style={{ color: form.assignedTo === null ? '#fbbf24' : D.textSec, fontSize: 12, fontWeight: 700 }}>Anyone</span>
+              </button>
               {kids.map(kid => (
                 <button key={kid.id} onClick={() => set('assignedTo', kid.id)} style={{ flex: 1, padding: '12px 8px', borderRadius: 16, border: `2px solid ${form.assignedTo === kid.id ? kid.color : D.border}`, background: form.assignedTo === kid.id ? `${kid.color}15` : 'rgba(255,255,255,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 24 }}>{kid.emoji}</span>
@@ -472,7 +515,7 @@ function AddChoreModal({ onClose }) {
         </div>
 
         <button
-          onClick={() => { if (!form.title.trim() || !form.assignedTo) return; addChore(form); onClose(); }}
+          onClick={() => { if (!form.title.trim()) return; addChore(form); onClose(); }}
           disabled={!form.title.trim()}
           style={{ width: '100%', marginTop: 20, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(99,102,241,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}
         >

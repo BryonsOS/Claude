@@ -280,6 +280,20 @@ export function AppProvider({ children }) {
     syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
   }, [chores, activityFeed, currentUserId, syncToFirestore]);
 
+  // Claim an open (unassigned) chore and immediately mark it done for review
+  const claimOpenChore = useCallback((choreId) => {
+    const now = new Date().toISOString();
+    const updatedChores = chores.map(c =>
+      c.id === choreId
+        ? { ...c, assignedTo: currentUserId, status: 'completed', completedAt: now }
+        : c
+    );
+    const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
+    setChores(updatedChores);
+    setActivityFeed(updatedFeed);
+    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToFirestore]);
+
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
     if (!chore) return;
@@ -420,7 +434,7 @@ export function AppProvider({ children }) {
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
-      completeChore, approveChore, rejectChore, addChore, deleteChore, updateChore,
+      completeChore, claimOpenChore, approveChore, rejectChore, addChore, deleteChore, updateChore,
       claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward, updateReward,
     }}>
       {children}
