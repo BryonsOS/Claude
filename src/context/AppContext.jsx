@@ -82,11 +82,16 @@ export function AppProvider({ children }) {
         }
       });
     } else if (currentUser.role === 'child') {
-      // Notify kid when a new chore is assigned to them
       chores.forEach(chore => {
         const existed = prevChoresRef.current.find(c => c.id === chore.id);
-        if (!existed && chore.assignedTo === currentUserId && chore.status === 'pending') {
-          fire('📋 New Chore!', `You've got a new task: "${chore.title}"`);
+        if (!existed && chore.status === 'pending') {
+          if (chore.assignedTo === currentUserId) {
+            // Chore assigned directly to this kid
+            fire('📋 New Chore!', `You've got a new task: "${chore.title}" — ${chore.points} pts`);
+          } else if (!chore.assignedTo) {
+            // Open chore available to anyone
+            fire('🌟 Chore Available!', `"${chore.title}" is up for grabs — ${chore.points} pts to whoever finishes first!`);
+          }
         }
       });
       // Notify kid when a rejected chore needs redoing
