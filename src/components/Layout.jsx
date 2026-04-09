@@ -28,7 +28,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
   const isParent         = currentUser.role === 'parent';
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: D.bg }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: D.bg }}>
 
       {/* Compact top bar */}
       <header
@@ -74,7 +74,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
       </header>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 80 }}>
+      <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
         {children}
       </main>
 
