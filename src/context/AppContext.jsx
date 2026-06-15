@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../supabase';
 
 const AppContext = createContext(null);
 const CODE_KEY   = 'chorefamily_code';
@@ -32,36 +31,45 @@ function generateFamilyCode() {
   return `${r(L)}${r(L)}${r(L)}${r(L)}-${r(D)}${r(D)}${r(D)}${r(D)}`;
 }
 
+function rowToState(row) {
+  return {
+    members:      row.members       || [],
+    chores:       row.chores        || [],
+    rewards:      row.rewards       || [],
+    rewardClaims: row.reward_claims || [],
+    activityFeed: row.activity_feed || [],
+    kidCode:      row.kid_code      || null,
+  };
+}
+
 export function AppProvider({ children }) {
   const savedCode   = localStorage.getItem(CODE_KEY);
   const savedAccess = localStorage.getItem(ACCESS_KEY) || 'full';
 
-  const [familyCode,   setFamilyCode]   = useState(savedCode);
-  const [accessLevel,  setAccessLevel]  = useState(savedAccess);
+  const [familyCode,    setFamilyCode]    = useState(savedCode);
+  const [accessLevel,   setAccessLevel]   = useState(savedAccess);
   const familyCodeRef = useRef(savedCode);
 
-  const [isLoading,    setIsLoading]    = useState(!!savedCode);
-  const [isSetup,      setIsSetup]      = useState(false);
-  const [members,      setMembers]      = useState([]);
-  const [chores,       setChores]       = useState([]);
-  const [rewards,      setRewards]      = useState([]);
-  const [rewardClaims, setRewardClaims] = useState([]);
-  const [activityFeed, setActivityFeed] = useState([]);
+  const [isLoading,     setIsLoading]     = useState(!!savedCode);
+  const [isSetup,       setIsSetup]       = useState(false);
+  const [members,       setMembers]       = useState([]);
+  const [chores,        setChores]        = useState([]);
+  const [rewards,       setRewards]       = useState([]);
+  const [rewardClaims,  setRewardClaims]  = useState([]);
+  const [activityFeed,  setActivityFeed]  = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [syncError,    setSyncError]    = useState(null);
-  const [kidCode,      setKidCode]      = useState(null);
+  const [syncError,     setSyncError]     = useState(null);
+  const [kidCode,       setKidCode]       = useState(null);
 
-  const currentUser    = members.find(m => m.id === currentUserId) || null;
-  const prevChoresRef  = useRef(null);
+  const currentUser   = members.find(m => m.id === currentUserId) || null;
+  const prevChoresRef = useRef(null);
 
-  // ─── Request notification permission once ───────────────────────────────
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
-  // ─── Detect chore changes and fire browser notifications ────────────────
   useEffect(() => {
     if (!currentUser) { prevChoresRef.current = chores; return; }
     if (prevChoresRef.current === null) { prevChoresRef.current = chores; return; }
@@ -73,7 +81,6 @@ export function AppProvider({ children }) {
     };
 
     if (currentUser.role === 'parent') {
-      // Notify parent when a kid marks a chore done
       chores.forEach(chore => {
         const prev = prevChoresRef.current.find(c => c.id === chore.id);
         if (prev && prev.status !== 'completed' && chore.status === 'completed') {
@@ -86,15 +93,12 @@ export function AppProvider({ children }) {
         const existed = prevChoresRef.current.find(c => c.id === chore.id);
         if (!existed && chore.status === 'pending') {
           if (chore.assignedTo === currentUserId) {
-            // Chore assigned directly to this kid
             fire('📋 New Chore!', `You've got a new task: "${chore.title}" — ${chore.points} pts`);
           } else if (!chore.assignedTo) {
-            // Open chore available to anyone
             fire('🌟 Chore Available!', `"${chore.title}" is up for grabs — ${chore.points} pts to whoever finishes first!`);
           }
         }
       });
-      // Notify kid when a rejected chore needs redoing
       chores.forEach(chore => {
         const prev = prevChoresRef.current.find(c => c.id === chore.id);
         if (prev && prev.status === 'completed' && chore.status === 'pending' && chore.assignedTo === currentUserId && chore.rejectionReason) {
@@ -106,12 +110,19 @@ export function AppProvider({ children }) {
     prevChoresRef.current = chores;
   }, [chores]);
 
-  // ─── Firestore sync helper ───────────────────────────────────────────────
-  const syncToFirestore = useCallback(async (updates) => {
+  const syncToSupabase = useCallback(async (updates) => {
     const code = familyCodeRef.current;
     if (!code) return;
+    const payload = {};
+    if ('members'      in updates) payload.members       = updates.members;
+    if ('chores'       in updates) payload.chores        = updates.chores;
+    if ('rewards'      in updates) payload.rewards       = updates.rewards;
+    if ('rewardClaims' in updates) payload.reward_claims = updates.rewardClaims;
+    if ('activityFeed' in updates) payload.activity_feed = updates.activityFeed;
+    if ('kidCode'      in updates) payload.kid_code      = updates.kidCode;
     try {
-      await updateDoc(doc(db, 'families', code), updates);
+      const { error } = await supabase.from('families').update(payload).eq('id', code);
+      if (error) throw error;
       setSyncError(null);
     } catch (err) {
       console.error('Sync error:', err);
@@ -119,39 +130,57 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // ─── Subscribe to Firestore when we have a code ──────────────────────────
   useEffect(() => {
     if (!familyCode) { setIsLoading(false); return; }
     familyCodeRef.current = familyCode;
 
-    const unsub = onSnapshot(doc(db, 'families', familyCode), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setMembers(d.members       || []);
-        setChores(d.chores         || []);
-        setRewards(d.rewards       || []);
-        setRewardClaims(d.rewardClaims || []);
-        setActivityFeed(d.activityFeed || []);
-        setKidCode(d.kidCode       || null);
-        setIsSetup(true);
-      } else {
-        localStorage.removeItem(CODE_KEY);
-        localStorage.removeItem(ACCESS_KEY);
-        setFamilyCode(null);
-        familyCodeRef.current = null;
-        setIsSetup(false);
-      }
-      setIsLoading(false);
-    }, (err) => {
-      console.error('Firestore error:', err);
-      setSyncError('Could not connect. Check your internet connection.');
-      setIsLoading(false);
-    });
+    supabase.from('families').select('*').eq('id', familyCode).single()
+      .then(({ data, error }) => {
+        if (error || !data) {
+          localStorage.removeItem(CODE_KEY);
+          localStorage.removeItem(ACCESS_KEY);
+          setFamilyCode(null);
+          familyCodeRef.current = null;
+          setIsSetup(false);
+        } else {
+          const s = rowToState(data);
+          setMembers(s.members);
+          setChores(s.chores);
+          setRewards(s.rewards);
+          setRewardClaims(s.rewardClaims);
+          setActivityFeed(s.activityFeed);
+          setKidCode(s.kidCode);
+          setIsSetup(true);
+        }
+        setIsLoading(false);
+      });
 
-    return unsub;
+    const channel = supabase
+      .channel(`family-${familyCode}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'families',
+        filter: `id=eq.${familyCode}`,
+      }, (payload) => {
+        const s = rowToState(payload.new);
+        setMembers(s.members);
+        setChores(s.chores);
+        setRewards(s.rewards);
+        setRewardClaims(s.rewardClaims);
+        setActivityFeed(s.activityFeed);
+        setKidCode(s.kidCode);
+        setIsSetup(true);
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          setSyncError('Could not connect. Check your internet connection.');
+        }
+      });
+
+    return () => { supabase.removeChannel(channel); };
   }, [familyCode]);
 
-  // ─── Setup ───────────────────────────────────────────────────────────────
   const completeOnboarding = useCallback(async (newMembers) => {
     const parentCode = generateFamilyCode();
     const kCode      = generateFamilyCode();
@@ -165,21 +194,22 @@ export function AppProvider({ children }) {
     const starterRewards = STARTER_REWARDS.map((r, i) => ({
       ...r, id: `r${Date.now() + i}`, createdBy: parentId || 'system',
     }));
-    const familyData = {
-      members: coloredMembers,
-      chores: [],
-      rewards: starterRewards,
-      rewardClaims: [],
-      activityFeed: [],
-      kidCode: kCode,
-      createdAt: new Date().toISOString(),
+
+    const familyRow = {
+      id:            parentCode,
+      members:       coloredMembers,
+      chores:        [],
+      rewards:       starterRewards,
+      reward_claims: [],
+      activity_feed: [],
+      kid_code:      kCode,
     };
 
-    // Write family doc + kid-code pointer in parallel
-    await Promise.all([
-      setDoc(doc(db, 'families', parentCode), familyData),
-      setDoc(doc(db, 'familyCodes', kCode), { parentCode }),
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('families').insert(familyRow),
+      supabase.from('family_codes').insert({ id: kCode, parent_code: parentCode }),
     ]);
+    if (e1 || e2) throw e1 || e2;
 
     localStorage.setItem(CODE_KEY, parentCode);
     localStorage.setItem(ACCESS_KEY, 'full');
@@ -188,14 +218,13 @@ export function AppProvider({ children }) {
     setFamilyCode(parentCode);
   }, []);
 
-  // ─── Join (works for both parent code and kid code) ──────────────────────
   const joinFamily = useCallback(async (code) => {
     const clean     = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
     const formatted = `${clean.slice(0, 4)}-${clean.slice(4)}`;
 
-    // Try as parent code first
-    const familySnap = await getDoc(doc(db, 'families', formatted));
-    if (familySnap.exists()) {
+    const { data: familyRow } = await supabase
+      .from('families').select('id').eq('id', formatted).single();
+    if (familyRow) {
       localStorage.setItem(CODE_KEY, formatted);
       localStorage.setItem(ACCESS_KEY, 'full');
       familyCodeRef.current = formatted;
@@ -204,15 +233,15 @@ export function AppProvider({ children }) {
       return;
     }
 
-    // Try as kid code — look up the pointer doc
-    const codeSnap = await getDoc(doc(db, 'familyCodes', formatted));
-    if (codeSnap.exists()) {
-      const { parentCode } = codeSnap.data();
-      localStorage.setItem(CODE_KEY, parentCode);
+    const { data: codeRow } = await supabase
+      .from('family_codes').select('parent_code').eq('id', formatted).single();
+    if (codeRow) {
+      const { parent_code } = codeRow;
+      localStorage.setItem(CODE_KEY, parent_code);
       localStorage.setItem(ACCESS_KEY, 'kids-only');
-      familyCodeRef.current = parentCode;
+      familyCodeRef.current = parent_code;
       setAccessLevel('kids-only');
-      setFamilyCode(parentCode);
+      setFamilyCode(parent_code);
       return;
     }
 
@@ -235,7 +264,6 @@ export function AppProvider({ children }) {
     setKidCode(null);
   }, []);
 
-  // ─── Members ─────────────────────────────────────────────────────────────
   const addMember = useCallback((memberData) => {
     const newMember = {
       id: `m${Date.now()}`,
@@ -245,25 +273,24 @@ export function AppProvider({ children }) {
     };
     const updated = [...members, newMember];
     setMembers(updated);
-    syncToFirestore({ members: updated });
+    syncToSupabase({ members: updated });
     return newMember;
-  }, [members, syncToFirestore]);
+  }, [members, syncToSupabase]);
 
   const updateMember = useCallback((id, updates) => {
     const updated = members.map(m => m.id === id ? { ...m, ...updates } : m);
     setMembers(updated);
-    syncToFirestore({ members: updated });
-  }, [members, syncToFirestore]);
+    syncToSupabase({ members: updated });
+  }, [members, syncToSupabase]);
 
   const removeMember = useCallback((id) => {
     const updatedMembers = members.filter(m => m.id !== id);
     const updatedChores  = chores.filter(c => c.assignedTo !== id);
     setMembers(updatedMembers);
     setChores(updatedChores);
-    syncToFirestore({ members: updatedMembers, chores: updatedChores });
-  }, [members, chores, syncToFirestore]);
+    syncToSupabase({ members: updatedMembers, chores: updatedChores });
+  }, [members, chores, syncToSupabase]);
 
-  // ─── Chores ──────────────────────────────────────────────────────────────
   const mkActivity = (type, extra = {}) => ({
     id: `a${Date.now()}`,
     ts: new Date().toISOString(),
@@ -282,10 +309,9 @@ export function AppProvider({ children }) {
     const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToSupabase]);
 
-  // Claim an open (unassigned) chore and immediately mark it done for review
   const claimOpenChore = useCallback((choreId) => {
     const now = new Date().toISOString();
     const updatedChores = chores.map(c =>
@@ -296,8 +322,8 @@ export function AppProvider({ children }) {
     const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToSupabase]);
 
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
@@ -316,8 +342,8 @@ export function AppProvider({ children }) {
     setChores(updatedChores);
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
-  }, [chores, members, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
+  }, [chores, members, activityFeed, currentUserId, syncToSupabase]);
 
   const rejectChore = useCallback((choreId, reason) => {
     const updatedChores = chores.map(c =>
@@ -328,8 +354,8 @@ export function AppProvider({ children }) {
     const updatedFeed = newFeed(mkActivity('chore_rejected', { choreId }), activityFeed);
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
+  }, [chores, activityFeed, currentUserId, syncToSupabase]);
 
   const addChore = useCallback((choreData) => {
     const newChore = {
@@ -348,23 +374,22 @@ export function AppProvider({ children }) {
     );
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ chores: updatedChores, activityFeed: updatedFeed });
+    syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
     return newChore;
-  }, [chores, activityFeed, currentUserId, syncToFirestore]);
+  }, [chores, activityFeed, currentUserId, syncToSupabase]);
 
   const deleteChore = useCallback((choreId) => {
     const updated = chores.filter(c => c.id !== choreId);
     setChores(updated);
-    syncToFirestore({ chores: updated });
-  }, [chores, syncToFirestore]);
+    syncToSupabase({ chores: updated });
+  }, [chores, syncToSupabase]);
 
   const updateChore = useCallback((choreId, changes) => {
     const updated = chores.map(c => c.id === choreId ? { ...c, ...changes } : c);
     setChores(updated);
-    syncToFirestore({ chores: updated });
-  }, [chores, syncToFirestore]);
+    syncToSupabase({ chores: updated });
+  }, [chores, syncToSupabase]);
 
-  // ─── Rewards ─────────────────────────────────────────────────────────────
   const claimReward = useCallback((rewardId) => {
     const claim = {
       id: `rc${Date.now()}`,
@@ -379,8 +404,8 @@ export function AppProvider({ children }) {
     const updatedFeed   = newFeed(mkActivity('reward_claimed', { rewardId }), activityFeed);
     setRewardClaims(updatedClaims);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ rewardClaims: updatedClaims, activityFeed: updatedFeed });
-  }, [rewardClaims, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ rewardClaims: updatedClaims, activityFeed: updatedFeed });
+  }, [rewardClaims, activityFeed, currentUserId, syncToSupabase]);
 
   const approveRewardClaim = useCallback((claimId) => {
     const claim  = rewardClaims.find(c => c.id === claimId);
@@ -400,36 +425,36 @@ export function AppProvider({ children }) {
     setRewardClaims(updatedClaims);
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
-    syncToFirestore({ rewardClaims: updatedClaims, members: updatedMembers, activityFeed: updatedFeed });
-  }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToFirestore]);
+    syncToSupabase({ rewardClaims: updatedClaims, members: updatedMembers, activityFeed: updatedFeed });
+  }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToSupabase]);
 
   const rejectRewardClaim = useCallback((claimId) => {
     const updated = rewardClaims.map(c =>
       c.id === claimId ? { ...c, status: 'rejected', approvedBy: currentUserId } : c
     );
     setRewardClaims(updated);
-    syncToFirestore({ rewardClaims: updated });
-  }, [rewardClaims, currentUserId, syncToFirestore]);
+    syncToSupabase({ rewardClaims: updated });
+  }, [rewardClaims, currentUserId, syncToSupabase]);
 
   const addReward = useCallback((rewardData) => {
     const newReward = { id: `r${Date.now()}`, createdBy: currentUserId, ...rewardData };
     const updated = [newReward, ...rewards];
     setRewards(updated);
-    syncToFirestore({ rewards: updated });
+    syncToSupabase({ rewards: updated });
     return newReward;
-  }, [rewards, currentUserId, syncToFirestore]);
+  }, [rewards, currentUserId, syncToSupabase]);
 
   const deleteReward = useCallback((rewardId) => {
     const updated = rewards.filter(r => r.id !== rewardId);
     setRewards(updated);
-    syncToFirestore({ rewards: updated });
-  }, [rewards, syncToFirestore]);
+    syncToSupabase({ rewards: updated });
+  }, [rewards, syncToSupabase]);
 
   const updateReward = useCallback((rewardId, changes) => {
     const updated = rewards.map(r => r.id === rewardId ? { ...r, ...changes } : r);
     setRewards(updated);
-    syncToFirestore({ rewards: updated });
-  }, [rewards, syncToFirestore]);
+    syncToSupabase({ rewards: updated });
+  }, [rewards, syncToSupabase]);
 
   return (
     <AppContext.Provider value={{
