@@ -16,12 +16,13 @@ export const PRESET_COLORS = [
   { color: '#ef4444', bg: '#fef2f2' },
 ];
 
+// pointCost and bonus stored in cents (100 = $1.00)
 const STARTER_REWARDS = [
-  { title: 'Extra Screen Time', pointCost: 50,  emoji: '🎮', description: '1 extra hour of games or TV.' },
-  { title: 'Choose Dinner',     pointCost: 75,  emoji: '🍕', description: 'Pick what the family has for dinner.' },
-  { title: 'Movie Night Pick',  pointCost: 60,  emoji: '🎬', description: 'Pick the movie for family movie night.' },
-  { title: 'Stay Up Late',      pointCost: 80,  emoji: '🌙', description: 'One night 1 hour past bedtime.' },
-  { title: 'No Chores Day',     pointCost: 150, emoji: '🏖️', description: 'One full day off from all chores.' },
+  { title: '$5 Cash Out',   pointCost: 500,  emoji: '💵', description: 'Cash out $5.00 of your earnings.',                   bonus: 0    },
+  { title: '$10 Cash Out',  pointCost: 1000, emoji: '💵', description: 'Cash out $10.00 of your earnings.',                  bonus: 0    },
+  { title: '$25 Cash Out',  pointCost: 2500, emoji: '💰', description: 'Save up and cash out $25 — nice work!',              bonus: 200  },
+  { title: '$50 Cash Out',  pointCost: 5000, emoji: '💰', description: 'Save big — cash out $50 plus a $5 bonus!',           bonus: 500  },
+  { title: '$100 Jackpot',  pointCost: 10000,emoji: '🏆', description: 'Super saver! Cash out $100 plus a $15 bonus!',      bonus: 1500 },
 ];
 
 function generateFamilyCode() {
@@ -80,6 +81,8 @@ export function AppProvider({ children }) {
       }
     };
 
+    const usd = c => '$' + (c / 100).toFixed(2);
+
     if (currentUser.role === 'parent') {
       chores.forEach(chore => {
         const prev = prevChoresRef.current.find(c => c.id === chore.id);
@@ -93,9 +96,9 @@ export function AppProvider({ children }) {
         const existed = prevChoresRef.current.find(c => c.id === chore.id);
         if (!existed && chore.status === 'pending') {
           if (chore.assignedTo === currentUserId) {
-            fire('📋 New Chore!', `You've got a new task: "${chore.title}" — ${chore.points} pts`);
+            fire('📋 New Chore!', `You've got a new task: "${chore.title}" — ${usd(chore.points)}`);
           } else if (!chore.assignedTo) {
-            fire('🌟 Chore Available!', `"${chore.title}" is up for grabs — ${chore.points} pts to whoever finishes first!`);
+            fire('🌟 Chore Available!', `"${chore.title}" is up for grabs — ${usd(chore.points)} to whoever finishes first!`);
           }
         }
       });

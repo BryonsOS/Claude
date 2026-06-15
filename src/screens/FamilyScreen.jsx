@@ -10,6 +10,8 @@ const D = {
   textSec: '#8b949e',
 };
 
+const fmt = c => '$' + (c / 100).toFixed(2);
+
 const PARENT_EMOJIS = ['👩','👨','👩‍🦱','👨‍🦱','👩‍🦰','👨‍🦰','👩‍🦳','👨‍🦳','👵','👴','🧑','🧔'];
 const KID_EMOJIS    = ['👧','👦','🧒','👧🏽','👦🏽','🧒🏽','👧🏿','👦🏿','🧒🏿','👶'];
 
@@ -18,23 +20,10 @@ export default function FamilyScreen() {
   return currentUser.role === 'parent' ? <ParentFamilyView /> : <KidProfileView />;
 }
 
-// ─── Shared CodeCard ──────────────────────────────────────────────────────────
-
 function CodeCard({ title, subtitle, code, badgeLabel, accent, onCopy, copied }) {
   return (
-    <div style={{
-      background: D.card,
-      border: `1px solid ${accent}40`,
-      borderRadius: 20,
-      padding: 16,
-      boxShadow: `0 4px 20px ${accent}12`,
-    }}>
-      <span style={{
-        display: 'inline-block', marginBottom: 8,
-        background: `${accent}20`, color: accent,
-        fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-        padding: '4px 10px', borderRadius: 20,
-      }}>{badgeLabel}</span>
+    <div style={{ background: D.card, border: `1px solid ${accent}40`, borderRadius: 20, padding: 16, boxShadow: `0 4px 20px ${accent}12` }}>
+      <span style={{ display: 'inline-block', marginBottom: 8, background: `${accent}20`, color: accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', padding: '4px 10px', borderRadius: 20 }}>{badgeLabel}</span>
       <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 4px' }}>{title}</p>
       <p style={{ color: D.textSec, fontSize: 12, margin: '0 0 12px', lineHeight: 1.4 }}>{subtitle}</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -49,15 +38,13 @@ function CodeCard({ title, subtitle, code, badgeLabel, accent, onCopy, copied })
   );
 }
 
-// ─── Parent view ──────────────────────────────────────────────────────────────
-
 function ParentFamilyView() {
   const { members, chores, familyCode, kidCode } = useApp();
-  const [showAddModal,   setShowAddModal]   = useState(false);
-  const [editingMember,  setEditingMember]  = useState(null);
-  const [showReset,      setShowReset]      = useState(false);
-  const [parentCopied,   setParentCopied]   = useState(false);
-  const [kidCopied,      setKidCopied]      = useState(false);
+  const [showAddModal,  setShowAddModal]  = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [showReset,     setShowReset]     = useState(false);
+  const [parentCopied,  setParentCopied]  = useState(false);
+  const [kidCopied,     setKidCopied]     = useState(false);
 
   const parents = members.filter(m => m.role === 'parent');
   const kids    = members.filter(m => m.role === 'child');
@@ -67,8 +54,6 @@ function ParentFamilyView() {
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-      {/* Invite codes */}
       <section>
         <SectionLabel text="INVITE CODES" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -77,7 +62,6 @@ function ParentFamilyView() {
         </div>
       </section>
 
-      {/* Parents */}
       <section>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <SectionLabel text="PARENTS" noMargin />
@@ -88,7 +72,6 @@ function ParentFamilyView() {
         </div>
       </section>
 
-      {/* Kids */}
       <section>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <SectionLabel text="KIDS" noMargin />
@@ -106,7 +89,6 @@ function ParentFamilyView() {
         )}
       </section>
 
-      {/* Danger zone */}
       <section style={{ borderTop: `1px solid ${D.border}`, paddingTop: 20 }}>
         <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 12px' }}>DANGER ZONE</p>
         {!showReset ? (
@@ -118,7 +100,7 @@ function ParentFamilyView() {
         )}
       </section>
 
-      {showAddModal && <AddMemberModal role={showAddModal} onClose={() => setShowAddModal(false)} />}
+      {showAddModal  && <AddMemberModal role={showAddModal} onClose={() => setShowAddModal(false)} />}
       {editingMember && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} />}
     </div>
   );
@@ -143,7 +125,7 @@ function MemberCard({ member, chores, onEdit }) {
       <div style={{ flex: 1 }}>
         <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 2px' }}>{member.name}</p>
         <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>
-          {member.role === 'parent' ? '👑 Parent' : `✨ ${member.points} pts · ${approved} chores done`}
+          {member.role === 'parent' ? '👑 Parent' : `💰 ${fmt(member.points)} earned · ${approved} chores done`}
         </p>
       </div>
       <button onClick={onEdit} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -158,7 +140,7 @@ function ResetConfirm({ onCancel }) {
   return (
     <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 16, padding: 16 }}>
       <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 4px' }}>Reset everything?</p>
-      <p style={{ color: D.textSec, fontSize: 12, margin: '0 0 14px', lineHeight: 1.4 }}>This deletes all members, chores, points, and rewards. Cannot be undone.</p>
+      <p style={{ color: D.textSec, fontSize: 12, margin: '0 0 14px', lineHeight: 1.4 }}>This deletes all members, chores, balances, and rewards. Cannot be undone.</p>
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={resetApp} style={{ flex: 1, padding: '13px 0', borderRadius: 14, background: '#dc2626', color: 'white', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer' }}>Yes, reset</button>
         <button onClick={onCancel} style={{ flex: 1, padding: '13px 0', borderRadius: 14, background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, color: D.textPri, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
@@ -167,12 +149,10 @@ function ResetConfirm({ onCancel }) {
   );
 }
 
-// ─── Kid profile view ─────────────────────────────────────────────────────────
-
 function KidProfileView() {
   const { currentUser, chores, rewardClaims, rewards } = useApp();
-  const myChores      = chores.filter(c => c.assignedTo === currentUser.id);
-  const totalApproved = myChores.filter(c => c.status === 'approved').length;
+  const myChores       = chores.filter(c => c.assignedTo === currentUser.id);
+  const totalApproved  = myChores.filter(c => c.status === 'approved').length;
   const claimedRewards = rewardClaims
     .filter(c => c.claimedBy === currentUser.id && c.status === 'approved')
     .map(c => rewards.find(r => r.id === c.rewardId))
@@ -181,26 +161,22 @@ function KidProfileView() {
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-      {/* Hero */}
       <div style={{ background: D.card, border: `1px solid ${color}35`, borderRadius: 24, padding: 20, textAlign: 'center', boxShadow: `0 4px 24px ${color}15` }}>
-        <div style={{ position: 'relative', height: 4, marginBottom: 16, borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${color}55)` }} />
+        <div style={{ height: 4, marginBottom: 16, borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${color}55)` }} />
         <div style={{ width: 80, height: 80, borderRadius: 24, background: `${color}20`, border: `2px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, margin: '0 auto 12px' }}>{currentUser.emoji}</div>
         <p style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 4px' }}>{currentUser.name}</p>
         <span style={{ background: `${color}20`, color, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20 }}>Family Member</span>
       </div>
 
-      {/* Stats — 3 tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-        <StatTile emoji="✨" value={currentUser.points} label="Points"      color={color} />
-        <StatTile emoji="✅" value={totalApproved}      label="Chores Done" color="#34d399" />
-        <StatTile emoji="🎁" value={claimedRewards.length} label="Rewards" color="#c084fc" />
+        <StatTile emoji="💰" value={fmt(currentUser.points)} label="Earned"     color={color} />
+        <StatTile emoji="✅"        value={totalApproved}           label="Chores Done" color="#34d399" />
+        <StatTile emoji="🎁" value={claimedRewards.length}   label="Cash Outs"  color="#c084fc" />
       </div>
 
-      {/* Earned rewards */}
       {claimedRewards.length > 0 && (
         <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: 16 }}>
-          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 12px' }}>🏆 REWARDS EARNED</p>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 12px' }}>🏆 CASH OUTS EARNED</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {claimedRewards.map((r, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -219,13 +195,11 @@ function StatTile({ emoji, value, label, color }) {
   return (
     <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
       <p style={{ fontSize: 22, margin: '0 0 4px' }}>{emoji}</p>
-      <p style={{ color, fontSize: 24, fontWeight: 900, lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
+      <p style={{ color, fontSize: value && value.toString().length > 4 ? 16 : 24, fontWeight: 900, lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
       <p style={{ color: D.textSec, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: 0 }}>{label}</p>
     </div>
   );
 }
-
-// ─── Modals ───────────────────────────────────────────────────────────────────
 
 function AddMemberModal({ role, onClose }) {
   const { addMember } = useApp();
@@ -237,7 +211,7 @@ function AddMemberModal({ role, onClose }) {
     <DarkModal onClose={onClose} title={`Add ${role === 'parent' ? 'Parent' : 'Kid'}`}>
       <EmojiPicker options={emojiOptions} selected={emoji} onSelect={setEmoji} />
       <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Name" maxLength={20} autoFocus
-        style={{ width: '100%', marginTop: 12, background: 'rgba(255,255,255,0.06)', border: `1px solid rgba(255,255,255,0.12)`, borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }} />
+        style={{ width: '100%', marginTop: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }} />
       <button onClick={() => { if (!name.trim()) return; addMember({ name: name.trim(), emoji, role }); onClose(); }} disabled={!name.trim()}
         style={{ width: '100%', marginTop: 14, padding: '15px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(99,102,241,0.4)', opacity: name.trim() ? 1 : 0.4 }}>
         Add {role === 'parent' ? 'Parent' : 'Kid'}
@@ -259,8 +233,7 @@ function EditMemberModal({ member, onClose }) {
     <DarkModal onClose={onClose} title={`Edit ${member.name}`}>
       <EmojiPicker options={emojiOptions} selected={emoji} onSelect={setEmoji} />
       <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Name" maxLength={20}
-        style={{ width: '100%', marginTop: 12, background: 'rgba(255,255,255,0.06)', border: `1px solid rgba(255,255,255,0.12)`, borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }} />
-
+        style={{ width: '100%', marginTop: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }} />
       <div style={{ marginTop: 14 }}>
         <p style={{ color: '#8b949e', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Color</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -270,12 +243,10 @@ function EditMemberModal({ member, onClose }) {
           ))}
         </div>
       </div>
-
       <button onClick={() => { if (!name.trim()) return; updateMember(member.id, { name: name.trim(), emoji, ...PRESET_COLORS[colorIdx] }); onClose(); }} disabled={!name.trim()}
         style={{ width: '100%', marginTop: 16, padding: '15px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(99,102,241,0.4)', opacity: name.trim() ? 1 : 0.4 }}>
         Save Changes
       </button>
-
       {!isSelf && !showDelete && (
         <button onClick={() => setShowDelete(true)}
           style={{ width: '100%', marginTop: 8, padding: '12px 0', borderRadius: 16, color: '#f87171', fontWeight: 700, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -287,7 +258,7 @@ function EditMemberModal({ member, onClose }) {
           <p style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 600, margin: '0 0 12px' }}>Remove {member.name}? Their chores will also be removed.</p>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { removeMember(member.id); onClose(); }} style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: '#dc2626', color: 'white', fontWeight: 900, fontSize: 13, border: 'none', cursor: 'pointer' }}>Remove</button>
-            <button onClick={() => setShowDelete(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: `1px solid rgba(255,255,255,0.1)`, color: '#f0f6fc', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={() => setShowDelete(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#f0f6fc', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -298,7 +269,7 @@ function EditMemberModal({ member, onClose }) {
 function DarkModal({ onClose, title, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid rgba(255,255,255,0.08)`, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: '1px solid rgba(255,255,255,0.08)', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 18px' }} />
         <h3 style={{ color: '#f0f6fc', fontWeight: 900, fontSize: 20, margin: '0 0 16px' }}>{title}</h3>
         {children}
