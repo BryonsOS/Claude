@@ -333,7 +333,7 @@ function DeleteChoreConfirm({ chore, onClose }) {
       <div style={{ background: '#1a2234', borderRadius: 24, width: '100%', maxWidth: 360, padding: '28px 24px', border: '1px solid rgba(248,113,113,0.2)' }} onClick={e => e.stopPropagation()}>
         <p style={{ fontSize: 40, margin: '0 0 12px', textAlign: 'center' }}>🗑️</p>
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>Delete Chore?</h3>
-        <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}"{chore.title}" will be permanently removed.</p>
+        <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}>"{chore.title}" will be permanently removed.</p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => { deleteChore(chore.id); onClose(); }} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: 'linear-gradient(135deg, #dc2626, #b91c1c)', border: 'none', cursor: 'pointer' }}>Delete</button>
           <button onClick={onClose} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 700, color: D.textSec, fontSize: 15, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>

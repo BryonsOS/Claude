@@ -154,7 +154,6 @@ function KidRewards() {
 
   return (
     <div style={{ padding: '16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Balance hero */}
       <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 24, padding: 20, boxShadow: `0 0 0 1px ${color}25, 0 8px 32px ${color}12` }}>
         <div style={{ height: 3, marginBottom: 16, borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${color}55)` }} />
         <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>YOUR BALANCE</p>
@@ -162,7 +161,6 @@ function KidRewards() {
         <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>earned — cash out anytime below</p>
       </div>
 
-      {/* Pending cash-outs */}
       {myClaims.filter(c => c.status === 'pending').map(claim => {
         const reward = rewards.find(r => r.id === claim.rewardId);
         if (!reward) return null;
@@ -177,7 +175,6 @@ function KidRewards() {
         );
       })}
 
-      {/* Ready to cash out */}
       {affordable.length > 0 && (
         <section>
           <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>💵 READY TO CASH OUT</p>
@@ -202,7 +199,6 @@ function KidRewards() {
         </section>
       )}
 
-      {/* Save more, earn bonus */}
       {saving.length > 0 && (
         <section>
           <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>💪 SAVE MORE, EARN A BONUS</p>
@@ -289,7 +285,7 @@ function DeleteRewardConfirm({ reward, onClose }) {
       <div style={{ background: '#1a2234', borderRadius: 24, width: '100%', maxWidth: 360, padding: '28px 24px', border: '1px solid rgba(248,113,113,0.2)' }} onClick={e => e.stopPropagation()}>
         <p style={{ fontSize: 40, margin: '0 0 12px', textAlign: 'center' }}>{reward.emoji}</p>
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>Remove Tier?</h3>
-        <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}"{reward.title}" will be removed.</p>
+        <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}>"{reward.title}" will be removed.</p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => { deleteReward(reward.id); onClose(); }} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: 'linear-gradient(135deg, #dc2626, #b91c1c)', border: 'none', cursor: 'pointer' }}>Remove</button>
           <button onClick={onClose} style={{ flex: 1, padding: '14px 0', borderRadius: 16, fontWeight: 700, color: D.textSec, fontSize: 15, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
