@@ -16,13 +16,12 @@ export const PRESET_COLORS = [
   { color: '#ef4444', bg: '#fef2f2' },
 ];
 
-// pointCost and bonus stored in cents (100 = $1.00)
 const STARTER_REWARDS = [
-  { title: '$5 Cash Out',   pointCost: 500,  emoji: '💵', description: 'Cash out $5.00 of your earnings.',                   bonus: 0    },
-  { title: '$10 Cash Out',  pointCost: 1000, emoji: '💵', description: 'Cash out $10.00 of your earnings.',                  bonus: 0    },
-  { title: '$25 Cash Out',  pointCost: 2500, emoji: '💰', description: 'Save up and cash out $25 — nice work!',              bonus: 200  },
-  { title: '$50 Cash Out',  pointCost: 5000, emoji: '💰', description: 'Save big — cash out $50 plus a $5 bonus!',           bonus: 500  },
-  { title: '$100 Jackpot',  pointCost: 10000,emoji: '🏆', description: 'Super saver! Cash out $100 plus a $15 bonus!',      bonus: 1500 },
+  { title: '$5 Cash Out',  pointCost: 500,  emoji: '💵', description: 'Cash out $5.00 of your earnings.',             bonus: 0    },
+  { title: '$10 Cash Out', pointCost: 1000, emoji: '💵', description: 'Cash out $10.00 of your earnings.',            bonus: 0    },
+  { title: '$25 Cash Out', pointCost: 2500, emoji: '💰', description: 'Save up and cash out $25 — nice work!',   bonus: 200  },
+  { title: '$50 Cash Out', pointCost: 5000, emoji: '💰', description: 'Save big — cash out $50 plus a $5 bonus!', bonus: 500  },
+  { title: '$100 Jackpot', pointCost: 10000,emoji: '🏆', description: 'Super saver! Cash out $100 plus a $15 bonus!', bonus: 1500 },
 ];
 
 function generateFamilyCode() {
@@ -360,6 +359,16 @@ export function AppProvider({ children }) {
     syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
   }, [chores, activityFeed, currentUserId, syncToSupabase]);
 
+  const resetChore = useCallback((choreId) => {
+    const updated = chores.map(c =>
+      c.id === choreId
+        ? { ...c, status: 'pending', completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        : c
+    );
+    setChores(updated);
+    syncToSupabase({ chores: updated });
+  }, [chores, syncToSupabase]);
+
   const addChore = useCallback((choreData) => {
     const newChore = {
       id: `ch${Date.now()}`,
@@ -439,6 +448,17 @@ export function AppProvider({ children }) {
     syncToSupabase({ rewardClaims: updated });
   }, [rewardClaims, currentUserId, syncToSupabase]);
 
+  const adjustBalance = useCallback((memberId, amountCents, note) => {
+    const updatedMembers = members.map(m =>
+      m.id === memberId ? { ...m, points: Math.max(0, m.points + amountCents) } : m
+    );
+    const entry = mkActivity('balance_adjustment', { targetId: memberId, amount: amountCents, note });
+    const updatedFeed = newFeed(entry, activityFeed);
+    setMembers(updatedMembers);
+    setActivityFeed(updatedFeed);
+    syncToSupabase({ members: updatedMembers, activityFeed: updatedFeed });
+  }, [members, activityFeed, currentUserId, syncToSupabase]);
+
   const addReward = useCallback((rewardData) => {
     const newReward = { id: `r${Date.now()}`, createdBy: currentUserId, ...rewardData };
     const updated = [newReward, ...rewards];
@@ -467,8 +487,11 @@ export function AppProvider({ children }) {
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
-      completeChore, claimOpenChore, approveChore, rejectChore, addChore, deleteChore, updateChore,
-      claimReward, approveRewardClaim, rejectRewardClaim, addReward, deleteReward, updateReward,
+      completeChore, claimOpenChore, approveChore, rejectChore,
+      resetChore, addChore, deleteChore, updateChore,
+      claimReward, approveRewardClaim, rejectRewardClaim,
+      addReward, deleteReward, updateReward,
+      adjustBalance,
     }}>
       {children}
     </AppContext.Provider>
