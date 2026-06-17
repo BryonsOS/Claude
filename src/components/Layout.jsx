@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 const NAV_ITEMS = [
@@ -8,7 +9,6 @@ const NAV_ITEMS = [
   { id: 'family',  label: 'Family',  emoji: '👨‍👩‍👧' },
 ];
 
-// Design tokens — all screens import from here via inline styles
 export const D = {
   bg:        '#0d1117',
   card:      '#161b22',
@@ -19,18 +19,45 @@ export const D = {
   accent:    '#6366f1',
 };
 
+async function refreshApp() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } finally {
+    window.location.reload(true);
+  }
+}
+
 export default function Layout({ activeTab, setActiveTab, children }) {
   const { currentUser, setCurrentUserId, chores, rewardClaims } = useApp();
+  const [refreshing, setRefreshing] = useState(false);
 
   const pendingApprovals = chores.filter(c => c.status === 'completed').length;
   const pendingRewards   = rewardClaims.filter(c => c.status === 'pending').length;
   const totalBadge       = pendingApprovals + pendingRewards;
   const isParent         = currentUser.role === 'parent';
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await refreshApp();
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: D.bg }}>
 
-      {/* Compact top bar */}
       <header
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)',
@@ -50,35 +77,56 @@ export default function Layout({ activeTab, setActiveTab, children }) {
             <span style={{ color: D.textPri, fontWeight: 900, fontSize: 17, letterSpacing: '-0.02em' }}>ChoreFamily</span>
           </div>
 
-          <button
-            onClick={() => setCurrentUserId(null)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 20,
-              background: 'rgba(255,255,255,0.08)',
-              border: `1px solid ${D.border}`,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{currentUser.emoji}</span>
-            <span style={{ color: D.textPri, fontSize: 13, fontWeight: 700 }}>{currentUser.name}</span>
-            <span style={{
-              background: currentUser.color,
-              color: 'white', fontSize: 11, fontWeight: 900,
-              padding: '1px 7px', borderRadius: 10,
-            }}>
-              {isParent ? '👑' : `${currentUser.points}✨`}
-            </span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={handleRefresh}
+              title="Check for updates"
+              style={{
+                width: 34, height: 34, borderRadius: 10,
+                background: 'rgba(255,255,255,0.06)',
+                border: `1px solid ${D.border}`,
+                cursor: refreshing ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16,
+                opacity: refreshing ? 0.5 : 1,
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+              }}
+            >
+              🔄
+            </button>
+
+            <button
+              onClick={() => setCurrentUserId(null)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 20,
+                background: 'rgba(255,255,255,0.08)',
+                border: `1px solid ${D.border}`,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{currentUser.emoji}</span>
+              <span style={{ color: D.textPri, fontSize: 13, fontWeight: 700 }}>{currentUser.name}</span>
+              <span style={{
+                background: currentUser.color,
+                color: 'white', fontSize: 11, fontWeight: 900,
+                padding: '1px 7px', borderRadius: 10,
+              }}>
+                {isParent ? '👑' : `${currentUser.points}✨`}
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main */}
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+
       <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
         {children}
       </main>
 
-      {/* Bottom nav — dark glass */}
       <nav
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 20,
