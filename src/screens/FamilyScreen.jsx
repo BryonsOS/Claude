@@ -40,11 +40,12 @@ function CodeCard({ title, subtitle, code, badgeLabel, accent, onCopy, copied })
 
 function ParentFamilyView() {
   const { members, chores, familyCode, kidCode } = useApp();
-  const [showAddModal,  setShowAddModal]  = useState(false);
-  const [editingMember, setEditingMember] = useState(null);
-  const [showReset,     setShowReset]     = useState(false);
-  const [parentCopied,  setParentCopied]  = useState(false);
-  const [kidCopied,     setKidCopied]     = useState(false);
+  const [showAddModal,    setShowAddModal]    = useState(false);
+  const [editingMember,   setEditingMember]   = useState(null);
+  const [adjustingMember, setAdjustingMember] = useState(null);
+  const [showReset,       setShowReset]       = useState(false);
+  const [parentCopied,    setParentCopied]    = useState(false);
+  const [kidCopied,       setKidCopied]       = useState(false);
 
   const parents = members.filter(m => m.role === 'parent');
   const kids    = members.filter(m => m.role === 'child');
@@ -84,7 +85,7 @@ function ParentFamilyView() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {kids.map(m => <MemberCard key={m.id} member={m} chores={chores} onEdit={() => setEditingMember(m)} />)}
+            {kids.map(m => <MemberCard key={m.id} member={m} chores={chores} onEdit={() => setEditingMember(m)} onAdjust={() => setAdjustingMember(m)} />)}
           </div>
         )}
       </section>
@@ -93,15 +94,16 @@ function ParentFamilyView() {
         <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 12px' }}>DANGER ZONE</p>
         {!showReset ? (
           <button onClick={() => setShowReset(true)} style={{ width: '100%', padding: '14px 0', borderRadius: 14, color: '#f87171', fontWeight: 700, fontSize: 14, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>
-            Reset App & Start Over
+            Reset App &amp; Start Over
           </button>
         ) : (
           <ResetConfirm onCancel={() => setShowReset(false)} />
         )}
       </section>
 
-      {showAddModal  && <AddMemberModal role={showAddModal} onClose={() => setShowAddModal(false)} />}
-      {editingMember && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} />}
+      {showAddModal    && <AddMemberModal role={showAddModal} onClose={() => setShowAddModal(false)} />}
+      {editingMember   && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} />}
+      {adjustingMember && <AdjustBalanceModal member={adjustingMember} onClose={() => setAdjustingMember(null)} />}
     </div>
   );
 }
@@ -114,7 +116,7 @@ function SectionLabel({ text, noMargin }) {
   );
 }
 
-function MemberCard({ member, chores, onEdit }) {
+function MemberCard({ member, chores, onEdit, onAdjust }) {
   const myChores = chores.filter(c => c.assignedTo === member.id);
   const approved = myChores.filter(c => c.status === 'approved').length;
   return (
@@ -128,10 +130,90 @@ function MemberCard({ member, chores, onEdit }) {
           {member.role === 'parent' ? '👑 Parent' : `💰 ${fmt(member.points)} earned · ${approved} chores done`}
         </p>
       </div>
-      <button onClick={onEdit} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        ✏️
-      </button>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {member.role === 'child' && onAdjust && (
+          <button onClick={onAdjust} title="Adjust balance" style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            💸
+          </button>
+        )}
+        <button onClick={onEdit} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ✏️
+        </button>
+      </div>
     </div>
+  );
+}
+
+function AdjustBalanceModal({ member, onClose }) {
+  const { adjustBalance } = useApp();
+  const [isDeduct, setIsDeduct] = useState(true);
+  const [dollars,  setDollars]  = useState('');
+  const [note,     setNote]     = useState('');
+
+  const parsedCents = Math.round(parseFloat(dollars) * 100);
+  const canSubmit   = parsedCents > 0 && !isNaN(parsedCents) && note.trim().length > 0;
+
+  const handle = () => {
+    if (!canSubmit) return;
+    adjustBalance(member.id, isDeduct ? -parsedCents : parsedCents, note.trim());
+    onClose();
+  };
+
+  const displayAmt = dollars && parseFloat(dollars) > 0 ? `$${parseFloat(dollars).toFixed(2)}` : '$0.00';
+
+  return (
+    <DarkModal onClose={onClose} title={`${member.emoji} ${member.name}`}>
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 2px' }}>Current Balance</p>
+        <p style={{ color: member.color, fontSize: 28, fontWeight: 900, margin: 0 }}>{fmt(member.points)}</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button onClick={() => setIsDeduct(true)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 900, fontSize: 14, border: `2px solid ${isDeduct ? '#f87171' : D.border}`, background: isDeduct ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.04)', color: isDeduct ? '#f87171' : D.textSec, cursor: 'pointer' }}>
+          − Deduct
+        </button>
+        <button onClick={() => setIsDeduct(false)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 900, fontSize: 14, border: `2px solid ${!isDeduct ? '#34d399' : D.border}`, background: !isDeduct ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.04)', color: !isDeduct ? '#34d399' : D.textSec, cursor: 'pointer' }}>
+          + Add
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Amount</p>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: D.textSec, fontSize: 16, fontWeight: 700, pointerEvents: 'none' }}>$</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            step="0.01"
+            value={dollars}
+            onChange={e => setDollars(e.target.value)}
+            placeholder="0.00"
+            autoFocus
+            style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px 12px 28px', color: '#f0f6fc', fontSize: 18, fontWeight: 700, boxSizing: 'border-box', outline: 'none' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Note / Reason</p>
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder={isDeduct ? "e.g. Sophia's squishies from $5 Below" : 'e.g. Bonus for helping with groceries'}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 14, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }}
+        />
+      </div>
+
+      <button
+        onClick={handle}
+        disabled={!canSubmit}
+        style={{ width: '100%', padding: '15px 0', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 15, background: isDeduct ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.4 }}
+      >
+        {isDeduct ? `− ${displayAmt} Deduction` : `+ ${displayAmt} Addition`}
+      </button>
+    </DarkModal>
   );
 }
 
