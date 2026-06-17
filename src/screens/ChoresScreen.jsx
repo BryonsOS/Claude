@@ -151,14 +151,14 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
 }
 
 function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
-  const { currentUser, completeChore, approveChore, claimOpenChore } = useApp();
-  const cat        = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-  const isParent   = currentUser.role === 'parent';
-  const isMyChore  = chore.assignedTo === currentUser.id;
+  const { currentUser, completeChore, approveChore, claimOpenChore, resetChore } = useApp();
+  const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  const isParent    = currentUser.role === 'parent';
+  const isMyChore   = chore.assignedTo === currentUser.id;
   const isOpenChore = !chore.assignedTo && chore.status === 'pending';
-  const st         = STATUS_MAP[chore.status] || STATUS_MAP.pending;
-  const isOverdue  = chore.dueDate && chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
-  const color      = currentUser.color;
+  const st          = STATUS_MAP[chore.status] || STATUS_MAP.pending;
+  const isOverdue   = chore.dueDate && chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
+  const color       = currentUser.color;
 
   return (
     <div style={{ background: D.card, border: isOpenChore ? '1px solid rgba(251,191,36,0.25)' : `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: isOpenChore ? '0 2px 12px rgba(251,191,36,0.08)' : '0 2px 8px rgba(0,0,0,0.3)' }}>
@@ -201,6 +201,9 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
             <button onClick={onClick} style={{ padding: '13px 18px', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>Reject</button>
           </>
         )}
+        {isParent && chore.status === 'approved' && (
+          <button onClick={() => resetChore(chore.id)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', cursor: 'pointer' }}>↩️ Do Again</button>
+        )}
         {isParent && chore.status !== 'completed' && (
           <>
             <button onClick={onEdit}   style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', cursor: 'pointer' }}>✏️ Edit</button>
@@ -213,7 +216,7 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
 }
 
 function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
-  const { currentUser, members, approveChore, rejectChore, completeChore } = useApp();
+  const { currentUser, members, approveChore, rejectChore, completeChore, resetChore } = useApp();
   const [rejectReason, setRejectReason] = useState('');
   const [showReject,   setShowReject]   = useState(false);
   const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
@@ -257,6 +260,9 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
             </div>
           ))}
         </div>
+        {isParent && chore.status === 'approved' && (
+          <button onClick={() => { resetChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #34d399, #059669)', border: 'none', cursor: 'pointer', marginBottom: 10 }}>↩️ Do Again</button>
+        )}
         {isParent && chore.status === 'completed' && !showReject && (
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { approveChore(chore.id); onClose(); }} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}>Approve ✓</button>
