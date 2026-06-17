@@ -17,6 +17,7 @@ const EVENT_STYLE = {
   reward_claimed:     { emoji: '🎁', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
   reward_approved:    { emoji: '🎉', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
   balance_adjustment: { emoji: '💸', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
+  chore_requested:    { emoji: '📝', color: '#a78bfa', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)' },
 };
 
 export default function FeedScreen() {
@@ -108,6 +109,7 @@ function ActivityEntry({ entry }) {
     chore_created:      <>{N(actor)} assigned <Q>{chore?.title}</Q> to {N(target)}</>,
     reward_claimed:     <>{N(actor)} claimed <Q>{reward?.title}</Q> {reward?.emoji}</>,
     reward_approved:    <>{N(actor)} approved {N(target)}'s <Q>{reward?.title}</Q> reward {reward?.emoji}</>,
+    chore_requested:    <>{N(actor)} requested credit for <Q>{chore?.title}</Q> — waiting for review 📝</>,
     balance_adjustment: (
       <>
         {N(actor)} {entry.amount < 0 ? 'deducted' : 'added'}{' '}

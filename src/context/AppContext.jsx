@@ -385,6 +385,32 @@ export function AppProvider({ children }) {
     showToast('↩️ Reset to To Do');
   }, [chores, syncToSupabase, showToast]);
 
+  const requestChore = useCallback((title, description, points, category) => {
+    const newChore = {
+      id: `ch${Date.now()}`,
+      title,
+      description,
+      category: category || 'other',
+      points,
+      assignedBy: currentUserId,
+      assignedTo: currentUserId,
+      selfReported: true,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      approvedAt: null,
+      approvedBy: null,
+      rejectionReason: '',
+      dueDate: null,
+      recurrence: 'once',
+    };
+    const updatedChores = [newChore, ...chores];
+    const updatedFeed = newFeed(mkActivity('chore_requested', { choreId: newChore.id }), activityFeed);
+    setChores(updatedChores);
+    setActivityFeed(updatedFeed);
+    syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
+    showToast('📝 Request submitted!');
+  }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
+
   const addChore = useCallback((choreData) => {
     const newChore = {
       id: `ch${Date.now()}`,
@@ -541,7 +567,7 @@ export function AppProvider({ children }) {
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
       completeChore, claimOpenChore, approveChore, rejectChore,
-      resetChore, addChore, deleteChore, updateChore, bulkApproveChores,
+      resetChore, requestChore, addChore, deleteChore, updateChore, bulkApproveChores,
       claimReward, approveRewardClaim, rejectRewardClaim,
       addReward, deleteReward, updateReward,
       adjustBalance,
