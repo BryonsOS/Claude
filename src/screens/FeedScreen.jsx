@@ -10,12 +10,13 @@ const D = {
 };
 
 const EVENT_STYLE = {
-  chore_completed: { emoji: '✅', color: '#34d399', bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.2)'  },
-  chore_approved:  { emoji: '🌟', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)'  },
-  chore_rejected:  { emoji: '↩️', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.2)' },
-  chore_created:   { emoji: '📋', color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
-  reward_claimed:  { emoji: '🎁', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
-  reward_approved: { emoji: '🎉', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
+  chore_completed:    { emoji: '✅', color: '#34d399', bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.2)'  },
+  chore_approved:     { emoji: '🌟', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)'  },
+  chore_rejected:     { emoji: '↩️', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.2)' },
+  chore_created:      { emoji: '📋', color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
+  reward_claimed:     { emoji: '🎁', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
+  reward_approved:    { emoji: '🎉', color: '#c084fc', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.2)' },
+  balance_adjustment: { emoji: '💸', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
 };
 
 export default function FeedScreen() {
@@ -98,13 +99,25 @@ function ActivityEntry({ entry }) {
   const style  = EVENT_STYLE[entry.type];
   if (!style) return null;
 
+  const usd = c => '$' + (Math.abs(c) / 100).toFixed(2);
+
   const messages = {
-    chore_completed: <>{N(actor)} marked <Q>{chore?.title}</Q> as complete {cat?.emoji}</>,
-    chore_approved:  <>{N(actor)} approved {N(target)}'s <Q>{chore?.title}</Q> <span style={{ color: '#818cf8', fontWeight: 900 }}>+{chore?.points}✨</span></>,
-    chore_rejected:  <>{N(actor)} sent back <Q>{chore?.title}</Q> for a redo</>,
-    chore_created:   <>{N(actor)} assigned <Q>{chore?.title}</Q> to {N(target)}</>,
-    reward_claimed:  <>{N(actor)} claimed <Q>{reward?.title}</Q> {reward?.emoji}</>,
-    reward_approved: <>{N(actor)} approved {N(target)}'s <Q>{reward?.title}</Q> reward {reward?.emoji}</>,
+    chore_completed:    <>{N(actor)} marked <Q>{chore?.title}</Q> as complete {cat?.emoji}</>,
+    chore_approved:     <>{N(actor)} approved {N(target)}'s <Q>{chore?.title}</Q> <span style={{ color: '#818cf8', fontWeight: 900 }}>+{chore?.points}✨</span></>,
+    chore_rejected:     <>{N(actor)} sent back <Q>{chore?.title}</Q> for a redo</>,
+    chore_created:      <>{N(actor)} assigned <Q>{chore?.title}</Q> to {N(target)}</>,
+    reward_claimed:     <>{N(actor)} claimed <Q>{reward?.title}</Q> {reward?.emoji}</>,
+    reward_approved:    <>{N(actor)} approved {N(target)}'s <Q>{reward?.title}</Q> reward {reward?.emoji}</>,
+    balance_adjustment: (
+      <>
+        {N(actor)} {entry.amount < 0 ? 'deducted' : 'added'}{' '}
+        <span style={{ color: entry.amount < 0 ? '#f87171' : '#34d399', fontWeight: 900 }}>
+          {entry.amount < 0 ? '−' : '+'}{usd(entry.amount)}
+        </span>
+        {' '}{entry.amount < 0 ? 'from' : 'to'} {N(target)}'s balance
+        {entry.note ? <> — <em style={{ fontStyle: 'italic', color: D.textSec }}>"{entry.note}"</em></> : null}
+      </>
+    ),
   };
 
   return (

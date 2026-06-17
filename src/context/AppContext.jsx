@@ -19,8 +19,8 @@ export const PRESET_COLORS = [
 const STARTER_REWARDS = [
   { title: '$5 Cash Out',  pointCost: 500,  emoji: '💵', description: 'Cash out $5.00 of your earnings.',             bonus: 0    },
   { title: '$10 Cash Out', pointCost: 1000, emoji: '💵', description: 'Cash out $10.00 of your earnings.',            bonus: 0    },
-  { title: '$25 Cash Out', pointCost: 2500, emoji: '💰', description: 'Save up and cash out $25 — nice work!',   bonus: 200  },
-  { title: '$50 Cash Out', pointCost: 5000, emoji: '💰', description: 'Save big — cash out $50 plus a $5 bonus!', bonus: 500  },
+  { title: '$25 Cash Out', pointCost: 2500, emoji: '💰', description: 'Save up and cash out $25 — nice work!',        bonus: 200  },
+  { title: '$50 Cash Out', pointCost: 5000, emoji: '💰', description: 'Save big — cash out $50 plus a $5 bonus!',     bonus: 500  },
   { title: '$100 Jackpot', pointCost: 10000,emoji: '🏆', description: 'Super saver! Cash out $100 plus a $15 bonus!', bonus: 1500 },
 ];
 
@@ -59,10 +59,21 @@ export function AppProvider({ children }) {
   const [activityFeed,  setActivityFeed]  = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [syncError,     setSyncError]     = useState(null);
+  const [toast,         setToast]         = useState(null);
   const [kidCode,       setKidCode]       = useState(null);
 
   const currentUser   = members.find(m => m.id === currentUserId) || null;
   const prevChoresRef = useRef(null);
+
+  const showToast = useCallback((msg, type = 'success') => {
+    setToast({ msg, type, id: Date.now() });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -312,7 +323,8 @@ export function AppProvider({ children }) {
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToSupabase]);
+    showToast('✅ Marked as done!');
+  }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const claimOpenChore = useCallback((choreId) => {
     const now = new Date().toISOString();
@@ -325,7 +337,8 @@ export function AppProvider({ children }) {
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToSupabase]);
+    showToast('✅ Chore claimed & done!');
+  }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
@@ -345,7 +358,8 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
-  }, [chores, members, activityFeed, currentUserId, syncToSupabase]);
+    showToast(`🌟 Approved! +$${(chore.points / 100).toFixed(2)} added`);
+  }, [chores, members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const rejectChore = useCallback((choreId, reason) => {
     const updatedChores = chores.map(c =>
@@ -357,7 +371,8 @@ export function AppProvider({ children }) {
     setChores(updatedChores);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, activityFeed: updatedFeed });
-  }, [chores, activityFeed, currentUserId, syncToSupabase]);
+    showToast('↩️ Sent back for a redo');
+  }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const resetChore = useCallback((choreId) => {
     const updated = chores.map(c =>
@@ -367,7 +382,8 @@ export function AppProvider({ children }) {
     );
     setChores(updated);
     syncToSupabase({ chores: updated });
-  }, [chores, syncToSupabase]);
+    showToast('↩️ Reset to To Do');
+  }, [chores, syncToSupabase, showToast]);
 
   const addChore = useCallback((choreData) => {
     const newChore = {
@@ -402,6 +418,39 @@ export function AppProvider({ children }) {
     syncToSupabase({ chores: updated });
   }, [chores, syncToSupabase]);
 
+  const bulkApproveChores = useCallback((choreIds) => {
+    const now = new Date().toISOString();
+    let updatedMembers = [...members];
+    const feedEntries = [];
+    choreIds.forEach((choreId, i) => {
+      const chore = chores.find(c => c.id === choreId);
+      if (!chore) return;
+      updatedMembers = updatedMembers.map(m =>
+        m.id === chore.assignedTo ? { ...m, points: m.points + chore.points } : m
+      );
+      feedEntries.push({
+        id: `a${Date.now()}${i}`,
+        ts: now,
+        memberId: currentUserId,
+        type: 'chore_approved',
+        choreId,
+        targetId: chore.assignedTo,
+      });
+    });
+    const updatedChores = chores.map(c =>
+      choreIds.includes(c.id)
+        ? { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId }
+        : c
+    );
+    let updatedFeed = activityFeed;
+    feedEntries.forEach(entry => { updatedFeed = newFeed(entry, updatedFeed); });
+    setChores(updatedChores);
+    setMembers(updatedMembers);
+    setActivityFeed(updatedFeed);
+    syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
+    showToast(`🌟 Approved all ${choreIds.length} chores!`);
+  }, [chores, members, activityFeed, currentUserId, syncToSupabase, showToast]);
+
   const claimReward = useCallback((rewardId) => {
     const claim = {
       id: `rc${Date.now()}`,
@@ -417,7 +466,8 @@ export function AppProvider({ children }) {
     setRewardClaims(updatedClaims);
     setActivityFeed(updatedFeed);
     syncToSupabase({ rewardClaims: updatedClaims, activityFeed: updatedFeed });
-  }, [rewardClaims, activityFeed, currentUserId, syncToSupabase]);
+    showToast('🎁 Reward claimed! Waiting for payout');
+  }, [rewardClaims, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const approveRewardClaim = useCallback((claimId) => {
     const claim  = rewardClaims.find(c => c.id === claimId);
@@ -438,7 +488,8 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ rewardClaims: updatedClaims, members: updatedMembers, activityFeed: updatedFeed });
-  }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToSupabase]);
+    showToast('🎉 Reward paid out!');
+  }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const rejectRewardClaim = useCallback((claimId) => {
     const updated = rewardClaims.map(c =>
@@ -457,7 +508,9 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ members: updatedMembers, activityFeed: updatedFeed });
-  }, [members, activityFeed, currentUserId, syncToSupabase]);
+    const usd = '$' + (Math.abs(amountCents) / 100).toFixed(2);
+    showToast(amountCents < 0 ? `💸 Deducted ${usd}` : `💰 Added ${usd}`);
+  }, [members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const addReward = useCallback((rewardData) => {
     const newReward = { id: `r${Date.now()}`, createdBy: currentUserId, ...rewardData };
@@ -482,13 +535,13 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       familyCode, kidCode, accessLevel,
-      isLoading, isSetup, syncError,
+      isLoading, isSetup, syncError, toast,
       currentUser, currentUserId, setCurrentUserId,
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,
       addMember, updateMember, removeMember,
       completeChore, claimOpenChore, approveChore, rejectChore,
-      resetChore, addChore, deleteChore, updateChore,
+      resetChore, addChore, deleteChore, updateChore, bulkApproveChores,
       claimReward, approveRewardClaim, rejectRewardClaim,
       addReward, deleteReward, updateReward,
       adjustBalance,

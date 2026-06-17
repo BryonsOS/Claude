@@ -68,7 +68,7 @@ export default function ChoresScreen() {
 }
 
 function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
-  const { currentUser, chores, members } = useApp();
+  const { currentUser, chores, members, bulkApproveChores } = useApp();
   const isParent = currentUser.role === 'parent';
 
   const openChores = chores.filter(c => !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending'));
@@ -130,6 +130,16 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore }) {
 
   return (
     <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {isParent && filter === 'completed' && filtered.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => bulkApproveChores(filtered.map(c => c.id))}
+            style={{ padding: '10px 18px', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}
+          >
+            ✅ Approve All ({filtered.length})
+          </button>
+        </div>
+      )}
       {!isParent && openChores.length > 0 && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>

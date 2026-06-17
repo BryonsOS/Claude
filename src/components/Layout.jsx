@@ -41,7 +41,7 @@ async function refreshApp() {
 }
 
 export default function Layout({ activeTab, setActiveTab, children }) {
-  const { currentUser, setCurrentUserId, chores, rewardClaims } = useApp();
+  const { currentUser, setCurrentUserId, chores, rewardClaims, syncError, toast } = useApp();
   const [refreshing, setRefreshing] = useState(false);
 
   const pendingApprovals = chores.filter(c => c.status === 'completed').length;
@@ -119,8 +119,46 @@ export default function Layout({ activeTab, setActiveTab, children }) {
         </div>
       </header>
 
+      {syncError && (
+        <div style={{
+          background: 'rgba(220,38,38,0.12)',
+          borderBottom: '1px solid rgba(220,38,38,0.3)',
+          padding: '8px 16px',
+          textAlign: 'center',
+          color: '#f87171',
+          fontSize: 12,
+          fontWeight: 700,
+        }}>
+          ⚠️ {syncError}
+        </div>
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top) + 68px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 100,
+          background: toast.type === 'error' ? 'rgba(220,38,38,0.97)' : 'rgba(22,27,34,0.97)',
+          border: `1px solid ${toast.type === 'error' ? 'rgba(220,38,38,0.6)' : 'rgba(52,211,153,0.35)'}`,
+          borderRadius: 20,
+          padding: '10px 20px',
+          color: '#f0f6fc',
+          fontWeight: 700,
+          fontSize: 14,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          whiteSpace: 'nowrap',
+          animation: 'slideDown 0.2s ease',
+          pointerEvents: 'none',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
       `}</style>
 
       <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
