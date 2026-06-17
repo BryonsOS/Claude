@@ -195,6 +195,9 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
         {!isParent && isMyChore && chore.status === 'completed' && (
           <div style={{ flex: 1, padding: '13px 0', borderRadius: 14, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', textAlign: 'center', color: '#fbbf24', fontWeight: 700, fontSize: 13 }}>⏳ Waiting for parent</div>
         )}
+        {!isParent && isMyChore && chore.status === 'approved' && (
+          <button onClick={() => completeChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>🔄 Did it again!</button>
+        )}
         {isParent && chore.status === 'completed' && (
           <>
             <button onClick={() => approveChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}>Approve ✓</button>
@@ -262,6 +265,9 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
         </div>
         {isParent && chore.status === 'approved' && (
           <button onClick={() => { resetChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #34d399, #059669)', border: 'none', cursor: 'pointer', marginBottom: 10 }}>↩️ Do Again</button>
+        )}
+        {!isParent && chore.status === 'approved' && chore.assignedTo === currentUser.id && (
+          <button onClick={() => { completeChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>🔄 Did it again!</button>
         )}
         {isParent && chore.status === 'completed' && !showReject && (
           <div style={{ display: 'flex', gap: 10 }}>
