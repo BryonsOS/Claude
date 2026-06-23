@@ -343,11 +343,14 @@ export function AppProvider({ children }) {
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
     if (!chore) return;
-    const updatedChores = chores.map(c =>
-      c.id === choreId
-        ? { ...c, status: 'approved', approvedAt: new Date().toISOString(), approvedBy: currentUserId }
-        : c
-    );
+    const repeats = chore.recurrence !== 'once' && !chore.selfReported;
+    const now = new Date().toISOString();
+    const updatedChores = chores.map(c => {
+      if (c.id !== choreId) return c;
+      return repeats
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
+    });
     const updatedMembers = members.map(m =>
       m.id === chore.assignedTo ? { ...m, points: m.points + chore.points } : m
     );
@@ -358,7 +361,10 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
-    showToast(`🌟 Approved! +$${(chore.points / 100).toFixed(2)} added`);
+    showToast(repeats
+      ? `🌟 Approved! +$${(chore.points / 100).toFixed(2)} — back in the pool!`
+      : `🌟 Approved! +$${(chore.points / 100).toFixed(2)} added`
+    );
   }, [chores, members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const rejectChore = useCallback((choreId, reason) => {
@@ -377,12 +383,12 @@ export function AppProvider({ children }) {
   const resetChore = useCallback((choreId) => {
     const updated = chores.map(c =>
       c.id === choreId
-        ? { ...c, status: 'pending', completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
         : c
     );
     setChores(updated);
     syncToSupabase({ chores: updated });
-    showToast('↩️ Reset to To Do');
+    showToast('↩️ Back in the pool!');
   }, [chores, syncToSupabase, showToast]);
 
   const requestChore = useCallback((title, description, points, category) => {
@@ -463,11 +469,13 @@ export function AppProvider({ children }) {
         targetId: chore.assignedTo,
       });
     });
-    const updatedChores = chores.map(c =>
-      choreIds.includes(c.id)
-        ? { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId }
-        : c
-    );
+    const updatedChores = chores.map(c => {
+      if (!choreIds.includes(c.id)) return c;
+      const repeats = c.recurrence !== 'once' && !c.selfReported;
+      return repeats
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
+    });
     let updatedFeed = activityFeed;
     feedEntries.forEach(entry => { updatedFeed = newFeed(entry, updatedFeed); });
     setChores(updatedChores);
