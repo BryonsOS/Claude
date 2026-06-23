@@ -157,6 +157,15 @@ export function AppProvider({ children }) {
           setIsSetup(false);
         } else {
           const s = rowToState(data);
+          const stuckChores = s.chores.filter(c => c.status === 'approved' && !c.selfReported);
+          if (stuckChores.length > 0) {
+            s.chores = s.chores.map(c =>
+              c.status === 'approved' && !c.selfReported
+                ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+                : c
+            );
+            supabase.from('families').update({ chores: s.chores }).eq('id', familyCode);
+          }
           setMembers(s.members);
           setChores(s.chores);
           setRewards(s.rewards);
