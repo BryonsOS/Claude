@@ -343,7 +343,7 @@ export function AppProvider({ children }) {
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
     if (!chore) return;
-    const repeats = chore.recurrence !== 'once' && !chore.selfReported;
+    const repeats = !chore.selfReported;
     const now = new Date().toISOString();
     const updatedChores = chores.map(c => {
       if (c.id !== choreId) return c;
@@ -471,7 +471,7 @@ export function AppProvider({ children }) {
     });
     const updatedChores = chores.map(c => {
       if (!choreIds.includes(c.id)) return c;
-      const repeats = c.recurrence !== 'once' && !c.selfReported;
+      const repeats = !c.selfReported;
       return repeats
         ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
         : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
