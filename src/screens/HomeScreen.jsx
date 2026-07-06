@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CATEGORY_META } from '../data/initialData';
+import { CATEGORY_META, isScheduledToday } from '../data/initialData';
+import { ProofSheet } from '../components/ProofSheet';
 
 const D = {
   bg:      '#0d1117',
@@ -68,6 +70,29 @@ function ParentHome({ setActiveTab }) {
         )}
       </section>
 
+      {kids.length > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <SectionLabel emoji="📊" text="THIS WEEK" color="#34d399" />
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden' }}>
+            {kids.map((kid, i) => {
+              const weekAgo = Date.now() - 7 * 86400000;
+              const wk      = (kid.history || []).filter(h => h.ts && new Date(h.ts).getTime() >= weekAgo);
+              const earned  = wk.reduce((s, h) => s + (h.points || 0), 0);
+              return (
+                <div key={kid.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < kids.length - 1 ? `1px solid ${D.border}` : 'none' }}>
+                  <span style={{ fontSize: 24 }}>{kid.emoji}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{kid.name}</p>
+                    <p style={{ color: D.textSec, fontSize: 11, margin: 0 }}>{wk.length} chore{wk.length === 1 ? '' : 's'} this week</p>
+                  </div>
+                  <span style={{ color: '#34d399', fontWeight: 900, fontSize: 16 }}>{fmt(earned)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {todayChores.length > 0 && (
         <section>
           <SectionLabel emoji="📋" text="TODAY'S CHORES" color="#6366f1" />
@@ -135,7 +160,7 @@ function ApprovalRow({ chore, onTap, last }) {
     <button onClick={onTap} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: last ? 'none' : `1px solid ${D.border}` }}>
       <div style={{ width: 38, height: 38, borderRadius: 12, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{cat.emoji}</div>
       <div style={{ flex: 1, textAlign: 'left' }}>
-        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{chore.title}</p>
+        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{chore.title}{chore.proofPhoto ? ' 📸' : ''}</p>
         <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>{kid?.name} · +{fmt(chore.points)}</p>
       </div>
       <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, flexShrink: 0 }}>Review</span>
@@ -187,10 +212,10 @@ function KidHome({ setActiveTab }) {
   const { currentUser, chores, rewards, completeChore, claimOpenChore } = useApp();
   const myChores    = chores.filter(c => c.assignedTo === currentUser.id);
   const todayChores = myChores.filter(c => c.dueDate === today());
-  const pending     = todayChores.filter(c => c.status === 'pending');
+  const pending     = todayChores.filter(c => c.status === 'pending' && isScheduledToday(c));
   const done        = (currentUser.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
   const waiting     = myChores.filter(c => c.status === 'completed').length;
-  const openChores  = chores.filter(c => !c.assignedTo && c.status === 'pending');
+  const openChores  = chores.filter(c => !c.assignedTo && c.status === 'pending' && isScheduledToday(c));
   const canAfford   = rewards.filter(r => r.pointCost <= currentUser.points);
   const streak      = calcStreak(currentUser.history || []);
   const color       = currentUser.color;
@@ -227,7 +252,7 @@ function KidHome({ setActiveTab }) {
           <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>TO DO TODAY · {pending.length} left</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pending.map(chore => (
-              <BigChoreCard key={chore.id} chore={chore} onComplete={() => completeChore(chore.id)} color={color} />
+              <BigChoreCard key={chore.id} chore={chore} onComplete={(photo) => completeChore(chore.id, photo)} color={color} />
             ))}
           </div>
         </section>
@@ -237,22 +262,9 @@ function KidHome({ setActiveTab }) {
         <section style={{ marginBottom: 16 }}>
           <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>🌟 UP FOR GRABS · FIRST COME, FIRST SERVE</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {openChores.map(chore => {
-              const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-              return (
-                <div key={chore.id} style={{ background: D.card, border: '1px solid rgba(251,191,36,0.25)', borderRadius: 20, overflow: 'hidden', display: 'flex', boxShadow: '0 2px 12px rgba(251,191,36,0.08)' }}>
-                  <div style={{ width: 5, background: 'linear-gradient(180deg, #f59e0b, #fbbf24)', flexShrink: 0 }} />
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 14px 12px' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>{cat.emoji}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
-                      <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{fmt(chore.points)}</span>
-                    </div>
-                    <button onClick={() => claimOpenChore(chore.id)} style={{ padding: '12px 16px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>🙋 I Did It!</button>
-                  </div>
-                </div>
-              );
-            })}
+            {openChores.map(chore => (
+              <OpenChoreCard key={chore.id} chore={chore} onClaim={(photo) => claimOpenChore(chore.id, photo)} />
+            ))}
           </div>
         </section>
       )}
@@ -307,6 +319,7 @@ function MiniStat({ label, value, color }) {
 }
 
 function BigChoreCard({ chore, onComplete, color }) {
+  const [showProof, setShowProof] = useState(false);
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   return (
     <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', display: 'flex', boxShadow: `0 2px 12px ${color}15` }}>
@@ -317,8 +330,32 @@ function BigChoreCard({ chore, onComplete, color }) {
           <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
           <span style={{ background: `${color}20`, color, fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{fmt(chore.points)}</span>
         </div>
-        <button onClick={onComplete} style={{ padding: '12px 18px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}55`, border: 'none', cursor: 'pointer', flexShrink: 0 }}>✓ Done</button>
+        <button onClick={() => setShowProof(true)} style={{ padding: '12px 18px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}55`, border: 'none', cursor: 'pointer', flexShrink: 0 }}>✓ Done</button>
       </div>
+      {showProof && (
+        <ProofSheet chore={chore} color={color} onSubmit={(photo) => { onComplete(photo); setShowProof(false); }} onClose={() => setShowProof(false)} />
+      )}
+    </div>
+  );
+}
+
+function OpenChoreCard({ chore, onClaim }) {
+  const [showProof, setShowProof] = useState(false);
+  const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+  return (
+    <div style={{ background: D.card, border: '1px solid rgba(251,191,36,0.25)', borderRadius: 20, overflow: 'hidden', display: 'flex', boxShadow: '0 2px 12px rgba(251,191,36,0.08)' }}>
+      <div style={{ width: 5, background: 'linear-gradient(180deg, #f59e0b, #fbbf24)', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 14px 12px' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>{cat.emoji}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
+          <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{fmt(chore.points)}</span>
+        </div>
+        <button onClick={() => setShowProof(true)} style={{ padding: '12px 16px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>🙋 I Did It!</button>
+      </div>
+      {showProof && (
+        <ProofSheet chore={chore} color="#f59e0b" onSubmit={(photo) => { onClaim(photo); setShowProof(false); }} onClose={() => setShowProof(false)} />
+      )}
     </div>
   );
 }

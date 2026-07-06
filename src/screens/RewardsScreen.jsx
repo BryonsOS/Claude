@@ -57,6 +57,7 @@ function ParentRewards({ onEdit, onDelete }) {
               const claimer = members.find(m => m.id === claim.claimedBy);
               if (!reward || !claimer) return null;
               const total = reward.pointCost + (reward.bonus || 0);
+              const short = claimer.points < reward.pointCost;
               return (
                 <div key={claim.id} style={{ background: D.card, border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(245,158,11,0.1), 0 4px 16px rgba(245,158,11,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 10px' }}>
@@ -75,8 +76,15 @@ function ParentRewards({ onEdit, onDelete }) {
                       {reward.bonus > 0 && <p style={{ color: D.textSec, fontWeight: 700, fontSize: 11, margin: 0 }}>= {fmt(total)} total</p>}
                     </div>
                   </div>
+                  {short && (
+                    <div style={{ margin: '0 14px 10px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 12, padding: '8px 12px' }}>
+                      <p style={{ color: '#f87171', fontSize: 12, fontWeight: 700, margin: 0 }}>
+                        ⚠️ {claimer.name} only has {fmt(claimer.points)} — {fmt(reward.pointCost - claimer.points)} short. Their balance dropped after claiming. Paying out sets it to $0.00.
+                      </p>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10, padding: '0 14px 14px' }}>
-                    <button onClick={() => approveRewardClaim(claim.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}>Pay Out 🎉</button>
+                    <button onClick={() => approveRewardClaim(claim.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: short ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: short ? '0 4px 12px rgba(217,119,6,0.4)' : '0 4px 12px rgba(5,150,105,0.4)' }}>{short ? 'Pay Out Anyway ⚠️' : 'Pay Out 🎉'}</button>
                     <button onClick={() => rejectRewardClaim(claim.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>Decline</button>
                   </div>
                 </div>

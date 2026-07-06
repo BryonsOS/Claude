@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CATEGORY_META } from '../data/initialData';
+import { CATEGORY_META, DAY_LABELS, isScheduledToday, daysLabel } from '../data/initialData';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
+import { ProofSheet, PhotoPick } from '../components/ProofSheet';
 
 const D = {
   bg:      '#0d1117',
@@ -144,11 +145,15 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
     );
   }
 
-  const openChores = chores.filter(c => !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending'));
+  const openChores = chores.filter(c =>
+    !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending') &&
+    (isParent || isScheduledToday(c))
+  );
 
   const filtered = chores.filter(c => {
     if (!c.assignedTo && c.status === 'pending') return false;
     if (!isParent && c.assignedTo !== currentUser.id) return false;
+    if (!isParent && c.status === 'pending' && !isScheduledToday(c)) return false;
     if (filter === 'all') return true;
     return c.status === filter;
   });
@@ -235,6 +240,7 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
 
 function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
   const { currentUser, completeChore, approveChore, claimOpenChore, resetChore } = useApp();
+  const [proofMode, setProofMode] = useState(null);
   const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent    = currentUser.role === 'parent';
   const isMyChore   = chore.assignedTo === currentUser.id;
@@ -242,6 +248,12 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
   const st          = STATUS_MAP[chore.status] || STATUS_MAP.pending;
   const isOverdue   = chore.dueDate && chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
   const color       = currentUser.color;
+
+  const submitProof = (photo) => {
+    if (proofMode === 'claim') claimOpenChore(chore.id, photo);
+    else completeChore(chore.id, photo);
+    setProofMode(null);
+  };
 
   return (
     <div style={{ background: D.card, border: isOpenChore ? '1px solid rgba(251,191,36,0.25)' : `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: isOpenChore ? '0 2px 12px rgba(251,191,36,0.08)' : '0 2px 8px rgba(0,0,0,0.3)' }}>
@@ -262,25 +274,34 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
             {isParent && !isOpenChore && <MemberName memberId={chore.assignedTo} style={{ color: D.textSec, fontSize: 11 }} />}
             {isParent && isOpenChore && <span style={{ color: '#fbbf24', fontSize: 11, fontWeight: 600 }}>🌟 First to finish wins</span>}
             {chore.dueDate && <span style={{ color: isOverdue ? '#f87171' : D.textSec, fontSize: 11, fontWeight: isOverdue ? 700 : 400 }}>{isOverdue ? '⚠️ Overdue' : `📅 ${formatDate(chore.dueDate)}`}</span>}
+            {isParent && chore.days && chore.days.length > 0 && chore.days.length < 7 && (
+              <span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>🗓 {daysLabel(chore.days)}</span>
+            )}
             {chore.selfReported && <span style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>📝 Self-reported</span>}
           </div>
         </div>
       </div>
 
+      {chore.proofPhoto && chore.status === 'completed' && (
+        <div style={{ padding: '0 14px 10px' }}>
+          <img src={chore.proofPhoto} alt="proof" onClick={onClick} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 14, display: 'block', cursor: 'pointer', border: `1px solid ${D.border}` }} />
+        </div>
+      )}
+
       <div style={{ padding: '0 14px 14px', display: 'flex', gap: 8 }}>
         {!isParent && isOpenChore && (
-          <button onClick={() => claimOpenChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer' }}>
+          <button onClick={() => setProofMode('claim')} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer' }}>
             🙋 I Did It! Earn {fmt(chore.points)}
           </button>
         )}
         {!isParent && isMyChore && chore.status === 'pending' && (
-          <button onClick={() => completeChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>Mark Done ✓</button>
+          <button onClick={() => setProofMode('complete')} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>Mark Done ✓</button>
         )}
         {!isParent && isMyChore && chore.status === 'completed' && (
           <div style={{ flex: 1, padding: '13px 0', borderRadius: 14, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', textAlign: 'center', color: '#fbbf24', fontWeight: 700, fontSize: 13 }}>⏳ Waiting for parent</div>
         )}
         {!isParent && isMyChore && chore.status === 'approved' && (
-          <button onClick={() => completeChore(chore.id)} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>🔄 Did it again!</button>
+          <button onClick={() => setProofMode('complete')} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>🔄 Did it again!</button>
         )}
         {isParent && chore.status === 'completed' && (
           <>
@@ -290,6 +311,9 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
         )}
         {isParent && chore.status === 'approved' && (
           <button onClick={() => resetChore(chore.id)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', cursor: 'pointer' }}>↩️ Do Again</button>
+        )}
+        {proofMode && (
+          <ProofSheet chore={chore} color={proofMode === 'claim' ? '#f59e0b' : color} onSubmit={submitProof} onClose={() => setProofMode(null)} />
         )}
         {isParent && chore.status !== 'completed' && (
           <>
@@ -306,6 +330,7 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
   const { currentUser, members, approveChore, rejectChore, completeChore, resetChore } = useApp();
   const [rejectReason, setRejectReason] = useState('');
   const [showReject,   setShowReject]   = useState(false);
+  const [showProof,    setShowProof]    = useState(false);
   const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent    = currentUser.role === 'parent';
   const st          = STATUS_MAP[chore.status] || STATUS_MAP.pending;
@@ -331,6 +356,12 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
             </div>
           )}
         </div>
+        {chore.proofPhoto && (
+          <div style={{ marginBottom: 14 }}>
+            <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>📸 PHOTO PROOF</p>
+            <img src={chore.proofPhoto} alt="proof" style={{ width: '100%', borderRadius: 16, display: 'block', border: `1px solid ${D.border}` }} />
+          </div>
+        )}
         {chore.description && (
           <p style={{ color: D.textSec, fontSize: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>{chore.description}</p>
         )}
@@ -338,7 +369,7 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
           {[
             { label: 'Earns',    value: fmt(chore.points) },
             { label: 'Due',      value: `📅 ${formatDate(chore.dueDate)}` },
-            { label: 'Repeats',  value: `🔁 ${chore.recurrence}` },
+            { label: 'Days',     value: `🗓 ${daysLabel(chore.days)}` },
             { label: 'Category', value: `${cat.emoji} ${cat.label}` },
           ].map(t => (
             <div key={t.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 12px' }}>
@@ -351,7 +382,7 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
           <button onClick={() => { resetChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #34d399, #059669)', border: 'none', cursor: 'pointer', marginBottom: 10 }}>↩️ Do Again</button>
         )}
         {!isParent && chore.status === 'approved' && chore.assignedTo === currentUser.id && (
-          <button onClick={() => { completeChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>🔄 Did it again!</button>
+          <button onClick={() => setShowProof(true)} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>🔄 Did it again!</button>
         )}
         {isParent && chore.status === 'completed' && !showReject && (
           <div style={{ display: 'flex', gap: 10 }}>
@@ -370,7 +401,10 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
           </div>
         )}
         {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
-          <button onClick={() => { completeChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer' }}>Mark as Complete ✓</button>
+          <button onClick={() => setShowProof(true)} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer' }}>Mark as Complete ✓</button>
+        )}
+        {showProof && (
+          <ProofSheet chore={chore} color={currentUser.color} onSubmit={(photo) => { completeChore(chore.id, photo); onClose(); }} onClose={() => setShowProof(false)} />
         )}
         {chore.rejectionReason && (
           <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '10px 14px' }}>
@@ -383,9 +417,33 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
   );
 }
 
+function DayPicker({ days, onChange }) {
+  const toggle = (d) => {
+    if (days.includes(d)) {
+      if (days.length === 1) return;
+      onChange(days.filter(x => x !== d));
+    } else {
+      onChange([...days, d]);
+    }
+  };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {DAY_LABELS.map((label, d) => {
+          const on = days.includes(d);
+          return (
+            <button key={d} onClick={() => toggle(d)} style={{ flex: 1, padding: '10px 0', borderRadius: 12, fontWeight: 900, fontSize: 12, border: `1px solid ${on ? '#6366f1' : D.border}`, background: on ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)', color: on ? '#a5b4fc' : D.textSec, cursor: 'pointer' }}>{label}</button>
+          );
+        })}
+      </div>
+      <p style={{ color: D.textSec, fontSize: 11, margin: '6px 0 0' }}>{days.length === 7 ? 'Shows every day' : `Kids only see this chore on: ${daysLabel(days)}`}</p>
+    </div>
+  );
+}
+
 function EditChoreModal({ chore, onClose }) {
   const { updateChore } = useApp();
-  const [form, setForm] = useState({ title: chore.title, description: chore.description || '', points: chore.points, dueDate: chore.dueDate, recurrence: chore.recurrence });
+  const [form, setForm] = useState({ title: chore.title, description: chore.description || '', points: chore.points, dueDate: chore.dueDate, recurrence: chore.recurrence, days: chore.days && chore.days.length > 0 ? chore.days : [0, 1, 2, 3, 4, 5, 6] });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
   const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
@@ -405,12 +463,8 @@ function EditChoreModal({ chore, onClose }) {
           </div>
           <div><label style={labelStyle}>Due Date</label><input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle} /></div>
           <div>
-            <label style={labelStyle}>Repeats</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['once', 'daily', 'weekly'].map(r => (
-                <button key={r} onClick={() => set('recurrence', r)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, border: `1px solid ${form.recurrence === r ? '#6366f1' : D.border}`, background: form.recurrence === r ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: form.recurrence === r ? '#818cf8' : D.textSec, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
-              ))}
-            </div>
+            <label style={labelStyle}>Show on Days</label>
+            <DayPicker days={form.days} onChange={d => set('days', d)} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
@@ -443,7 +497,7 @@ function AddChoreModal({ onClose }) {
   const { members, addChore } = useApp();
   const kids  = members.filter(m => m.role === 'child');
   const today = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState({ title: '', description: '', assignedTo: kids[0]?.id || '', points: 150, dueDate: today, recurrence: 'once', category: 'cleaning' });
+  const [form, setForm] = useState({ title: '', description: '', assignedTo: kids[0]?.id || '', points: 150, dueDate: today, recurrence: 'once', category: 'cleaning', days: [0, 1, 2, 3, 4, 5, 6] });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
   const labelStyle = { color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 };
@@ -478,12 +532,8 @@ function AddChoreModal({ onClose }) {
           </div>
           <div><label style={labelStyle}>Due Date</label><input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle} /></div>
           <div>
-            <label style={labelStyle}>Repeats</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['once', 'daily', 'weekly'].map(r => (
-                <button key={r} onClick={() => set('recurrence', r)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, border: `1px solid ${form.recurrence === r ? '#6366f1' : D.border}`, background: form.recurrence === r ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: form.recurrence === r ? '#818cf8' : D.textSec, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
-              ))}
-            </div>
+            <label style={labelStyle}>Show on Days</label>
+            <DayPicker days={form.days} onChange={d => set('days', d)} />
           </div>
           <div>
             <label style={labelStyle}>Category</label>
@@ -509,6 +559,7 @@ function RequestChoreModal({ onClose }) {
   const [description, setDescription] = useState('');
   const [category,    setCategory]    = useState('other');
   const [points,      setPoints]      = useState(150);
+  const [photo,       setPhoto]       = useState(null);
 
   const canSubmit  = title.trim().length > 0;
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
@@ -530,6 +581,10 @@ function RequestChoreModal({ onClose }) {
             <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Any extra info for your parent..." style={{ ...inputStyle, resize: 'none' }} rows={2} />
           </div>
           <div>
+            <label style={labelStyle}>Photo Proof (optional)</label>
+            <PhotoPick photo={photo} onPhoto={setPhoto} color={currentUser.color} />
+          </div>
+          <div>
             <label style={labelStyle}>Suggested Pay: <span style={{ color: currentUser.color }}>{fmt(points)}</span></label>
             <input type="range" value={points} onChange={e => setPoints(Number(e.target.value))} min="50" max="2000" step="50" style={{ width: '100%', accentColor: currentUser.color }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$5</span><span>$10</span><span>$20</span></div>
@@ -547,7 +602,7 @@ function RequestChoreModal({ onClose }) {
           </div>
         </div>
         <button
-          onClick={() => { if (!canSubmit) return; requestChore(title.trim(), description.trim(), points, category); onClose(); }}
+          onClick={() => { if (!canSubmit) return; requestChore(title.trim(), description.trim(), points, category, photo); onClose(); }}
           disabled={!canSubmit}
           style={{ width: '100%', marginTop: 20, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, border: 'none', cursor: canSubmit ? 'pointer' : 'default', boxShadow: canSubmit ? `0 4px 20px ${currentUser.color}44` : 'none', opacity: canSubmit ? 1 : 0.4 }}
         >

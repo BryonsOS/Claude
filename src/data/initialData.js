@@ -88,6 +88,19 @@ export const ACTIVITY_FEED = [
   { id: 'a6', type: 'chore_completed', memberId: 'k3', choreId: 'ch4', ts: new Date(Date.now() - 1800000).toISOString() },
 ];
 
+export const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+export function isScheduledToday(chore) {
+  const d = chore.days;
+  if (!d || d.length === 0 || d.length === 7) return true;
+  return d.includes(new Date().getDay());
+}
+
+export function daysLabel(days) {
+  if (!days || days.length === 0 || days.length === 7) return 'Every day';
+  return [...days].sort((a, b) => a - b).map(d => DAY_LABELS[d]).join(' ');
+}
+
 export const CATEGORY_META = {
   kitchen: { label: 'Kitchen', color: '#f97316', bg: '#fff7ed', emoji: '🍳' },
   cleaning: { label: 'Cleaning', color: '#6366f1', bg: '#eef2ff', emoji: '🧹' },

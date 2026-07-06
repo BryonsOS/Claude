@@ -331,10 +331,10 @@ export function AppProvider({ children }) {
 
   const newFeed = (item, feed) => [item, ...feed].slice(0, 60);
 
-  const completeChore = useCallback((choreId) => {
+  const completeChore = useCallback((choreId, photo = null) => {
     const now = new Date().toISOString();
     const updatedChores = chores.map(c =>
-      c.id === choreId ? { ...c, status: 'completed', completedAt: now } : c
+      c.id === choreId ? { ...c, status: 'completed', completedAt: now, proofPhoto: photo } : c
     );
     const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
     setChores(updatedChores);
@@ -343,11 +343,11 @@ export function AppProvider({ children }) {
     showToast('✅ Marked as done!');
   }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
-  const claimOpenChore = useCallback((choreId) => {
+  const claimOpenChore = useCallback((choreId, photo = null) => {
     const now = new Date().toISOString();
     const updatedChores = chores.map(c =>
       c.id === choreId
-        ? { ...c, assignedTo: currentUserId, status: 'completed', completedAt: now }
+        ? { ...c, assignedTo: currentUserId, status: 'completed', completedAt: now, proofPhoto: photo }
         : c
     );
     const updatedFeed = newFeed(mkActivity('chore_completed', { choreId }), activityFeed);
@@ -366,8 +366,8 @@ export function AppProvider({ children }) {
     const updatedChores = chores.map(c => {
       if (c.id !== choreId) return c;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
-        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
+        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId, proofPhoto: null };
     });
     const histEntry = { id: `h${Date.now()}`, choreId, title: chore.title, points: chore.points, ts: now };
     const updatedMembers = members.map(m =>
@@ -391,7 +391,7 @@ export function AppProvider({ children }) {
   const rejectChore = useCallback((choreId, reason) => {
     const updatedChores = chores.map(c =>
       c.id === choreId
-        ? { ...c, status: 'pending', completedAt: null, rejectionReason: reason || '' }
+        ? { ...c, status: 'pending', completedAt: null, rejectionReason: reason || '', proofPhoto: null }
         : c
     );
     const updatedFeed = newFeed(mkActivity('chore_rejected', { choreId }), activityFeed);
@@ -405,7 +405,7 @@ export function AppProvider({ children }) {
     const todayStr = new Date().toISOString().split('T')[0];
     const updated = chores.map(c =>
       c.id === choreId
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
         : c
     );
     setChores(updated);
@@ -413,7 +413,7 @@ export function AppProvider({ children }) {
     showToast('↩️ Back in the pool!');
   }, [chores, syncToSupabase, showToast]);
 
-  const requestChore = useCallback((title, description, points, category) => {
+  const requestChore = useCallback((title, description, points, category, photo = null) => {
     const newChore = {
       id: `ch${Date.now()}`,
       title,
@@ -424,6 +424,7 @@ export function AppProvider({ children }) {
       assignedTo: currentUserId,
       selfReported: true,
       status: 'completed',
+      proofPhoto: photo,
       completedAt: new Date().toISOString(),
       approvedAt: null,
       approvedBy: null,
@@ -501,8 +502,8 @@ export function AppProvider({ children }) {
       if (!choreIds.includes(c.id) || c.status !== 'completed') return c;
       const repeats = !c.selfReported;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
-        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
+        : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId, proofPhoto: null };
     });
     let updatedFeed = activityFeed;
     feedEntries.forEach(entry => { updatedFeed = newFeed(entry, updatedFeed); });
