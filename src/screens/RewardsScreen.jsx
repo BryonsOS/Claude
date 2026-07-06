@@ -148,7 +148,7 @@ function KidRewards() {
   const myPoints   = currentUser.points;
   const color      = currentUser.color;
   const myClaims   = rewardClaims.filter(c => c.claimedBy === currentUser.id);
-  const claimedIds = new Set(myClaims.filter(c => c.status === 'pending' || c.status === 'approved').map(c => c.rewardId));
+  const claimedIds = new Set(myClaims.filter(c => c.status === 'pending').map(c => c.rewardId));
   const affordable = rewards.filter(r => r.pointCost <= myPoints && !claimedIds.has(r.id));
   const saving     = rewards.filter(r => r.pointCost > myPoints && !claimedIds.has(r.id));
 

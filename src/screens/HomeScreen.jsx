@@ -25,8 +25,7 @@ function ParentHome({ setActiveTab }) {
   const pendingApprove = chores.filter(c => c.status === 'completed');
   const pendingRewards = rewardClaims.filter(c => c.status === 'pending');
   const todayChores    = chores.filter(c => c.dueDate === today());
-  const doneToday      = todayChores.filter(c => c.status === 'approved').length;
-  const pct            = todayChores.length ? Math.round((doneToday / todayChores.length) * 100) : 0;
+  const doneToday      = kids.flatMap(k => k.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
   const needsAction    = pendingApprove.length + pendingRewards.length;
 
   return (
@@ -38,8 +37,8 @@ function ParentHome({ setActiveTab }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
         <StatTile value={todayChores.length} label="TODAY"  color="#6366f1" />
-        <StatTile value={`${pct}%`}          label="DONE"   color="#10b981" />
-        <StatTile value={needsAction}         label="ACTION" color={needsAction > 0 ? '#f59e0b' : D.textSec} pulse={needsAction > 0} />
+        <StatTile value={doneToday}          label="DONE"   color="#10b981" />
+        <StatTile value={needsAction}        label="ACTION" color={needsAction > 0 ? '#f59e0b' : D.textSec} pulse={needsAction > 0} />
       </div>
 
       {needsAction > 0 && (
@@ -107,9 +106,10 @@ function SectionLabel({ emoji, text, color }) {
 
 function KidTile({ kid, chores, onTap }) {
   const myChores = chores.filter(c => c.assignedTo === kid.id);
-  const done     = myChores.filter(c => c.status === 'approved').length;
+  const done     = (kid.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
   const review   = myChores.filter(c => c.status === 'completed').length;
-  const pct      = myChores.length ? Math.round((done / myChores.length) * 100) : 0;
+  const active   = myChores.filter(c => c.status === 'pending' || c.status === 'completed').length;
+  const pct      = (done + active) ? Math.round((done / (done + active)) * 100) : 0;
 
   return (
     <button onClick={onTap} style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, padding: 16, textAlign: 'left', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)', display: 'block', width: '100%' }}>
@@ -120,7 +120,7 @@ function KidTile({ kid, chores, onTap }) {
         <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max(pct, 0)}%`, transition: 'width 0.3s' }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: D.textSec, fontSize: 11 }}>{done}/{myChores.length} done</span>
+        <span style={{ color: D.textSec, fontSize: 11 }}>{done} done today</span>
         {review > 0 && <span style={{ color: '#f59e0b', fontSize: 11, fontWeight: 700 }}>⚡ {review} to review</span>}
       </div>
     </button>
@@ -184,14 +184,15 @@ function ChoreRow({ chore, last }) {
 }
 
 function KidHome({ setActiveTab }) {
-  const { currentUser, chores, rewards, completeChore } = useApp();
+  const { currentUser, chores, rewards, completeChore, claimOpenChore } = useApp();
   const myChores    = chores.filter(c => c.assignedTo === currentUser.id);
   const todayChores = myChores.filter(c => c.dueDate === today());
   const pending     = todayChores.filter(c => c.status === 'pending');
-  const done        = todayChores.filter(c => c.status === 'approved').length;
-  const waiting     = todayChores.filter(c => c.status === 'completed').length;
+  const done        = (currentUser.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
+  const waiting     = myChores.filter(c => c.status === 'completed').length;
+  const openChores  = chores.filter(c => !c.assignedTo && c.status === 'pending');
   const canAfford   = rewards.filter(r => r.pointCost <= currentUser.points);
-  const streak      = calcStreak(myChores);
+  const streak      = calcStreak(currentUser.history || []);
   const color       = currentUser.color;
 
   return (
@@ -208,12 +209,12 @@ function KidHome({ setActiveTab }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           <MiniStat label="EARNED"  value={fmt(currentUser.points)} color={color} />
-          <MiniStat label="TODAY"   value={`${done}/${todayChores.length}`} color="#10b981" />
+          <MiniStat label="DONE"    value={done} color="#10b981" />
           <MiniStat label="WAITING" value={waiting} color={waiting > 0 ? '#f59e0b' : D.textSec} />
         </div>
       </div>
 
-      {pending.length === 0 && todayChores.length > 0 && (
+      {pending.length === 0 && openChores.length === 0 && (done > 0 || waiting > 0) && (
         <div style={{ background: 'linear-gradient(135deg, #064e3b, #065f46)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '20px 16px', textAlign: 'center', marginBottom: 16, boxShadow: '0 4px 20px rgba(16,185,129,0.2)' }}>
           <p style={{ fontSize: 36, margin: '0 0 6px' }}>🎉</p>
           <p style={{ color: '#6ee7b7', fontWeight: 900, fontSize: 20, margin: '0 0 4px' }}>You crushed it today!</p>
@@ -232,11 +233,35 @@ function KidHome({ setActiveTab }) {
         </section>
       )}
 
+      {openChores.length > 0 && (
+        <section style={{ marginBottom: 16 }}>
+          <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>🌟 UP FOR GRABS · FIRST COME, FIRST SERVE</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {openChores.map(chore => {
+              const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
+              return (
+                <div key={chore.id} style={{ background: D.card, border: '1px solid rgba(251,191,36,0.25)', borderRadius: 20, overflow: 'hidden', display: 'flex', boxShadow: '0 2px 12px rgba(251,191,36,0.08)' }}>
+                  <div style={{ width: 5, background: 'linear-gradient(180deg, #f59e0b, #fbbf24)', flexShrink: 0 }} />
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 14px 12px' }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>{cat.emoji}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
+                      <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{fmt(chore.points)}</span>
+                    </div>
+                    <button onClick={() => claimOpenChore(chore.id)} style={{ padding: '12px 16px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>🙋 I Did It!</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {waiting > 0 && (
         <section style={{ marginBottom: 16 }}>
           <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>WAITING FOR APPROVAL</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {todayChores.filter(c => c.status === 'completed').map(chore => {
+            {myChores.filter(c => c.status === 'completed').map(chore => {
               const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
               return (
                 <div key={chore.id} style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -298,9 +323,9 @@ function BigChoreCard({ chore, onComplete, color }) {
   );
 }
 
-function calcStreak(chores) {
-  if (!chores.length) return 0;
-  const dates = new Set(chores.filter(c => c.status === 'approved' && c.approvedAt).map(c => c.approvedAt.split('T')[0]));
+function calcStreak(history) {
+  if (!history.length) return 0;
+  const dates = new Set(history.map(h => h.ts && h.ts.split('T')[0]).filter(Boolean));
   let s = 0;
   for (let i = 0; i < 30; i++) {
     const d = new Date();

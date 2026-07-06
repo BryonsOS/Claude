@@ -112,7 +112,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
                 color: 'white', fontSize: 11, fontWeight: 900,
                 padding: '1px 7px', borderRadius: 10,
               }}>
-                {isParent ? '👑' : `${currentUser.points}✨`}
+                {isParent ? '👑' : '$' + (currentUser.points / 100).toFixed(2)}
               </span>
             </button>
           </div>

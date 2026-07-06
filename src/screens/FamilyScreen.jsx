@@ -117,8 +117,7 @@ function SectionLabel({ text, noMargin }) {
 }
 
 function MemberCard({ member, chores, onEdit, onAdjust }) {
-  const myChores = chores.filter(c => c.assignedTo === member.id);
-  const approved = myChores.filter(c => c.status === 'approved').length;
+  const approved = (member.history || []).length;
   return (
     <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 48, height: 48, borderRadius: 14, background: `${member.color}18`, border: `1px solid ${member.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>

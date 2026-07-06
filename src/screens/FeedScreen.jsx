@@ -56,7 +56,7 @@ export default function FeedScreen() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                       <span style={{ color: D.textPri, fontWeight: 700, fontSize: 14 }}>{kid.name}</span>
-                      <span style={{ color: kid.color, fontWeight: 900, fontSize: 13 }}>✨ {kid.points}</span>
+                      <span style={{ color: kid.color, fontWeight: 900, fontSize: 13 }}>💰 {'$' + (kid.points / 100).toFixed(2)}</span>
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 99, height: 6 }}>
                       <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max((kid.points / Math.max(topPts,1)) * 100, 3)}%`, transition: 'width 0.4s' }} />
@@ -104,7 +104,7 @@ function ActivityEntry({ entry }) {
 
   const messages = {
     chore_completed:    <>{N(actor)} marked <Q>{chore?.title}</Q> as complete {cat?.emoji}</>,
-    chore_approved:     <>{N(actor)} approved {N(target)}'s <Q>{chore?.title}</Q> <span style={{ color: '#818cf8', fontWeight: 900 }}>+{chore?.points}✨</span></>,
+    chore_approved:     <>{N(actor)} approved {N(target)}'s <Q>{chore?.title || entry.choreTitle}</Q> <span style={{ color: '#34d399', fontWeight: 900 }}>+{usd(entry.amount ?? chore?.points ?? 0)}</span></>,
     chore_rejected:     <>{N(actor)} sent back <Q>{chore?.title}</Q> for a redo</>,
     chore_created:      <>{N(actor)} assigned <Q>{chore?.title}</Q> to {N(target)}</>,
     reward_claimed:     <>{N(actor)} claimed <Q>{reward?.title}</Q> {reward?.emoji}</>,

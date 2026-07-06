@@ -157,13 +157,21 @@ export function AppProvider({ children }) {
           setIsSetup(false);
         } else {
           const s = rowToState(data);
-          const stuckChores = s.chores.filter(c => c.status === 'approved' && !c.selfReported);
-          if (stuckChores.length > 0) {
-            s.chores = s.chores.map(c =>
-              c.status === 'approved' && !c.selfReported
-                ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
-                : c
-            );
+          const todayStr = new Date().toISOString().split('T')[0];
+          const needsFix = s.chores.some(c =>
+            (c.status === 'approved' && !c.selfReported) ||
+            (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < todayStr)
+          );
+          if (needsFix) {
+            s.chores = s.chores.map(c => {
+              if (c.status === 'approved' && !c.selfReported) {
+                return { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr };
+              }
+              if (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < todayStr) {
+                return { ...c, dueDate: todayStr };
+              }
+              return c;
+            });
             supabase.from('families').update({ chores: s.chores }).eq('id', familyCode);
           }
           setMembers(s.members);
@@ -314,7 +322,7 @@ export function AppProvider({ children }) {
   }, [members, chores, syncToSupabase]);
 
   const mkActivity = (type, extra = {}) => ({
-    id: `a${Date.now()}`,
+    id: `a${Date.now()}${Math.floor(Math.random() * 100000)}`,
     ts: new Date().toISOString(),
     memberId: currentUserId,
     type,
@@ -351,20 +359,24 @@ export function AppProvider({ children }) {
 
   const approveChore = useCallback((choreId) => {
     const chore = chores.find(c => c.id === choreId);
-    if (!chore) return;
+    if (!chore || chore.status !== 'completed') return;
     const repeats = !chore.selfReported;
     const now = new Date().toISOString();
+    const todayStr = now.split('T')[0];
     const updatedChores = chores.map(c => {
       if (c.id !== choreId) return c;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
         : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
     });
+    const histEntry = { id: `h${Date.now()}`, choreId, title: chore.title, points: chore.points, ts: now };
     const updatedMembers = members.map(m =>
-      m.id === chore.assignedTo ? { ...m, points: m.points + chore.points } : m
+      m.id === chore.assignedTo
+        ? { ...m, points: m.points + chore.points, history: [...(m.history || []), histEntry].slice(-200) }
+        : m
     );
     const updatedFeed = newFeed(
-      mkActivity('chore_approved', { choreId, targetId: chore.assignedTo }), activityFeed
+      mkActivity('chore_approved', { choreId, targetId: chore.assignedTo, amount: chore.points, choreTitle: chore.title }), activityFeed
     );
     setChores(updatedChores);
     setMembers(updatedMembers);
@@ -390,9 +402,10 @@ export function AppProvider({ children }) {
   }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const resetChore = useCallback((choreId) => {
+    const todayStr = new Date().toISOString().split('T')[0];
     const updated = chores.map(c =>
       c.id === choreId
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
         : c
     );
     setChores(updated);
@@ -461,13 +474,17 @@ export function AppProvider({ children }) {
 
   const bulkApproveChores = useCallback((choreIds) => {
     const now = new Date().toISOString();
+    const todayStr = now.split('T')[0];
     let updatedMembers = [...members];
     const feedEntries = [];
     choreIds.forEach((choreId, i) => {
       const chore = chores.find(c => c.id === choreId);
-      if (!chore) return;
+      if (!chore || chore.status !== 'completed') return;
+      const histEntry = { id: `h${Date.now()}${i}`, choreId, title: chore.title, points: chore.points, ts: now };
       updatedMembers = updatedMembers.map(m =>
-        m.id === chore.assignedTo ? { ...m, points: m.points + chore.points } : m
+        m.id === chore.assignedTo
+          ? { ...m, points: m.points + chore.points, history: [...(m.history || []), histEntry].slice(-200) }
+          : m
       );
       feedEntries.push({
         id: `a${Date.now()}${i}`,
@@ -476,13 +493,15 @@ export function AppProvider({ children }) {
         type: 'chore_approved',
         choreId,
         targetId: chore.assignedTo,
+        amount: chore.points,
+        choreTitle: chore.title,
       });
     });
     const updatedChores = chores.map(c => {
-      if (!choreIds.includes(c.id)) return c;
+      if (!choreIds.includes(c.id) || c.status !== 'completed') return c;
       const repeats = !c.selfReported;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '' }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr }
         : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId };
     });
     let updatedFeed = activityFeed;
@@ -540,7 +559,8 @@ export function AppProvider({ children }) {
     );
     setRewardClaims(updated);
     syncToSupabase({ rewardClaims: updated });
-  }, [rewardClaims, currentUserId, syncToSupabase]);
+    showToast('✗ Cash out declined');
+  }, [rewardClaims, currentUserId, syncToSupabase, showToast]);
 
   const adjustBalance = useCallback((memberId, amountCents, note) => {
     const updatedMembers = members.map(m =>
