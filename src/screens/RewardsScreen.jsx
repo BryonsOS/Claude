@@ -4,10 +4,10 @@ import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 import { PayChips } from '../components/PayChips';
 
 const D = {
-  card:    '#161b22',
+  card:    '#1a1430',
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 const fmt = c => '$' + (c / 100).toFixed(2);
@@ -255,7 +255,7 @@ function EditRewardModal({ reward, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#221a3d', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 20px' }}>Edit Cash-Out Tier</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -292,7 +292,7 @@ function DeleteRewardConfirm({ reward, onClose }) {
   const { deleteReward } = useApp();
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#1a2234', borderRadius: 24, width: '100%', maxWidth: 360, padding: '28px 24px', border: '1px solid rgba(248,113,113,0.2)' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#221a3d', borderRadius: 24, width: '100%', maxWidth: 360, padding: '28px 24px', border: '1px solid rgba(248,113,113,0.2)' }} onClick={e => e.stopPropagation()}>
         <p style={{ fontSize: 40, margin: '0 0 12px', textAlign: 'center' }}>{reward.emoji}</p>
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>Remove Tier?</h3>
         <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 20px', textAlign: 'center' }}>"{reward.title}" will be removed.</p>
@@ -314,7 +314,7 @@ function AddRewardModal({ onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#221a3d', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 20px' }}>Add Cash-Out Tier</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

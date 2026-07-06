@@ -1,5 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+
+const CONFETTI_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#f97316', '#8b5cf6', '#06b6d4', '#ef4444', '#fbbf24', '#34d399'];
+
+function Confetti() {
+  const pieces = useMemo(() => Array.from({ length: 60 }, (_, i) => ({
+    left:  Math.random() * 100,
+    delay: Math.random() * 0.4,
+    dur:   1.4 + Math.random() * 1.1,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    w:     6 + Math.random() * 6,
+    h:     8 + Math.random() * 8,
+    spin:  Math.random() > 0.5 ? 1 : -1,
+  })), []);
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, pointerEvents: 'none', overflow: 'hidden' }}>
+      {pieces.map((p, i) => (
+        <span key={i} style={{
+          position: 'absolute',
+          top: -20,
+          left: `${p.left}%`,
+          width: p.w,
+          height: p.h,
+          borderRadius: 2,
+          background: p.color,
+          animation: `confettiFall ${p.dur}s ${p.delay}s cubic-bezier(0.25,0.46,0.45,0.94) forwards`,
+          transform: `rotate(${p.spin > 0 ? 0 : 180}deg)`,
+        }} />
+      ))}
+    </div>
+  );
+}
 
 const NAV_ITEMS = [
   { id: 'home',    label: 'Home',    emoji: '🏠' },
@@ -10,12 +41,12 @@ const NAV_ITEMS = [
 ];
 
 export const D = {
-  bg:        '#0d1117',
-  card:      '#161b22',
-  cardHover: '#1c2128',
+  bg:        '#0f0a23',
+  card:      '#1a1430',
+  cardHover: '#241b3f',
   border:    'rgba(255,255,255,0.08)',
   textPri:   '#f0f6fc',
-  textSec:   '#8b949e',
+  textSec:   '#9e98bd',
   accent:    '#6366f1',
 };
 
@@ -41,8 +72,16 @@ async function refreshApp() {
 }
 
 export default function Layout({ activeTab, setActiveTab, children }) {
-  const { currentUser, setCurrentUserId, chores, rewardClaims, syncError, toast } = useApp();
+  const { currentUser, setCurrentUserId, chores, rewardClaims, syncError, toast, celebrate } = useApp();
   const [refreshing, setRefreshing] = useState(false);
+  const [burst,      setBurst]      = useState(null);
+
+  useEffect(() => {
+    if (!celebrate) return;
+    setBurst(celebrate);
+    const t = setTimeout(() => setBurst(null), 3000);
+    return () => clearTimeout(t);
+  }, [celebrate]);
 
   const pendingApprovals = chores.filter(c => c.status === 'completed').length;
   const pendingRewards   = rewardClaims.filter(c => c.status === 'pending').length;
@@ -139,7 +178,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 100,
-          background: toast.type === 'error' ? 'rgba(220,38,38,0.97)' : 'rgba(22,27,34,0.97)',
+          background: toast.type === 'error' ? 'rgba(220,38,38,0.97)' : 'rgba(26,20,48,0.97)',
           border: `1px solid ${toast.type === 'error' ? 'rgba(220,38,38,0.6)' : 'rgba(52,211,153,0.35)'}`,
           borderRadius: 20,
           padding: '10px 20px',
@@ -155,9 +194,15 @@ export default function Layout({ activeTab, setActiveTab, children }) {
         </div>
       )}
 
+      {burst && <Confetti key={burst} />}
+
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes confettiFall {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(105vh) rotate(660deg); opacity: 0.7; }
+        }
       `}</style>
 
       <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
@@ -170,7 +215,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
           paddingBottom: 'env(safe-area-inset-bottom)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          background: 'rgba(13,17,23,0.92)',
+          background: 'rgba(15,10,35,0.92)',
           borderTop: `1px solid ${D.border}`,
         }}
       >

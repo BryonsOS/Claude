@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 const D = {
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 export function compressImage(file, maxDim = 900, quality = 0.6) {
@@ -65,7 +65,7 @@ export function ProofSheet({ chore, color, onSubmit, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={e => { e.stopPropagation(); onClose(); }}>
-      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#221a3d', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: `1px solid ${D.border}`, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
         <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 22, margin: '0 0 4px' }}>Nice work! 🎉</h3>
         <p style={{ color: D.textSec, fontSize: 14, margin: '0 0 16px' }}>Snap a photo of "{chore.title}" so your parent can approve it from anywhere!</p>

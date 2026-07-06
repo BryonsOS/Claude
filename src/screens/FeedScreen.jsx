@@ -3,10 +3,10 @@ import { MemberAvatar } from '../components/MemberAvatar';
 import { CATEGORY_META } from '../data/initialData';
 
 const D = {
-  card:    '#161b22',
+  card:    '#1a1430',
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 const EVENT_STYLE = {

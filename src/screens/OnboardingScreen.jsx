@@ -116,15 +116,15 @@ function CreateFlow({ onBack, onCreate }) {
         </div>
 
         {/* Card */}
-        <div style={{ background: '#1a2234', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ background: '#221a3d', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
           {step === 0 && (
             <>
               <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Add parents</h2>
-              <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>Who manages the family?</p>
+              <p style={{ color: '#9e98bd', fontSize: 14, margin: '0 0 20px' }}>Who manages the family?</p>
               <MemberList members={parents} setMembers={setParents} emojiOptions={PARENT_EMOJIS} />
               <AddBtn onClick={() => setParents(p => [...p, { id: `p${Date.now()}`, name: '', emoji: '👨', role: 'parent' }])} label="Add another parent" />
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button onClick={onBack} style={{ padding: '12px 16px', borderRadius: 16, color: '#8b949e', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
+                <button onClick={onBack} style={{ padding: '12px 16px', borderRadius: 16, color: '#9e98bd', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
                 <button onClick={() => setStep(1)} disabled={!canNext0} style={{ flex: 1, padding: '16px 0', borderRadius: 20, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: canNext0 ? 'pointer' : 'default', opacity: canNext0 ? 1 : 0.4, boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>Next →</button>
               </div>
             </>
@@ -133,7 +133,7 @@ function CreateFlow({ onBack, onCreate }) {
           {step === 1 && (
             <>
               <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Add kids</h2>
-              <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>Who will be doing chores?</p>
+              <p style={{ color: '#9e98bd', fontSize: 14, margin: '0 0 20px' }}>Who will be doing chores?</p>
               <MemberList members={kids} setMembers={setKids} emojiOptions={KID_EMOJIS} />
               <AddBtn onClick={() => setKids(k => [...k, { id: `k${Date.now()}`, name: '', emoji: '👦', role: 'child' }])} label="Add another kid" />
               {error && (
@@ -142,7 +142,7 @@ function CreateFlow({ onBack, onCreate }) {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button onClick={() => setStep(0)} disabled={loading} style={{ padding: '12px 16px', borderRadius: 16, color: '#8b949e', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
+                <button onClick={() => setStep(0)} disabled={loading} style={{ padding: '12px 16px', borderRadius: 16, color: '#9e98bd', fontWeight: 700, fontSize: 14, background: 'transparent', border: 'none', cursor: 'pointer' }}>Back</button>
                 <button onClick={handleFinish} disabled={!canNext1 || loading} style={{ flex: 1, padding: '16px 0', borderRadius: 20, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: canNext1 && !loading ? 'pointer' : 'default', opacity: canNext1 && !loading ? 1 : 0.4, boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
                   {loading ? '⏳ Saving…' : "Let's Go! 🚀"}
                 </button>
@@ -177,9 +177,9 @@ function JoinFlow({ onBack, onJoin }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: BG }}>
       <div style={{ width: '100%', maxWidth: 360 }}>
-        <div style={{ background: '#1a2234', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ background: '#221a3d', borderRadius: 28, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
           <h2 style={{ color: '#f0f6fc', fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>Join a Family</h2>
-          <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 20px' }}>
+          <p style={{ color: '#9e98bd', fontSize: 14, margin: '0 0 20px' }}>
             Ask a parent for your code — use the <span style={{ color: '#f0f6fc', fontWeight: 700 }}>Parent Code</span> for full access or the{' '}
             <span style={{ color: '#f0f6fc', fontWeight: 700 }}>Kid Code</span> for a kids-only device.
           </p>
@@ -216,7 +216,7 @@ function JoinFlow({ onBack, onJoin }) {
           <button onClick={onBack} style={{
             width: '100%', marginTop: 10, padding: '12px 0',
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: '#8b949e', fontSize: 14, fontWeight: 700,
+            color: '#9e98bd', fontSize: 14, fontWeight: 700,
           }}>← Back</button>
         </div>
       </div>
@@ -266,7 +266,7 @@ function MemberRow({ member, emojiOptions, onChange, onRemove }) {
           }}
         />
         {onRemove && (
-          <button onClick={onRemove} style={{ color: '#8b949e', fontSize: 16, padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+          <button onClick={onRemove} style={{ color: '#9e98bd', fontSize: 16, padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
         )}
       </div>
       {showEmojis && (
@@ -291,7 +291,7 @@ function AddBtn({ onClick, label }) {
     <button onClick={onClick} style={{
       marginTop: 10, width: '100%', padding: '12px 0', borderRadius: 16,
       border: '2px dashed rgba(255,255,255,0.2)', background: 'transparent',
-      color: '#8b949e', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+      color: '#9e98bd', fontSize: 14, fontWeight: 700, cursor: 'pointer',
     }}>
       + {label}
     </button>

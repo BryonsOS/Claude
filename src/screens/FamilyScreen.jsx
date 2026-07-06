@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useApp, PRESET_COLORS } from '../context/AppContext';
 
 const D = {
-  bg:      '#0d1117',
-  card:    '#161b22',
-  cardAlt: '#1a2234',
+  bg:      '#0f0a23',
+  card:    '#1a1430',
+  cardAlt: '#221a3d',
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 const fmt = c => '$' + (c / 100).toFixed(2);
@@ -316,7 +316,7 @@ function EditMemberModal({ member, onClose }) {
       <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Name" maxLength={20}
         style={{ width: '100%', marginTop: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '12px 14px', color: '#f0f6fc', fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' }} />
       <div style={{ marginTop: 14 }}>
-        <p style={{ color: '#8b949e', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Color</p>
+        <p style={{ color: '#9e98bd', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Color</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {PRESET_COLORS.map((c, i) => (
             <button key={c.color} onClick={() => setColorIdx(i)}
@@ -350,7 +350,7 @@ function EditMemberModal({ member, onClose }) {
 function DarkModal({ onClose, title, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#1a2234', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: '1px solid rgba(255,255,255,0.08)', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#221a3d', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 20px 40px', border: '1px solid rgba(255,255,255,0.08)', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 18px' }} />
         <h3 style={{ color: '#f0f6fc', fontWeight: 900, fontSize: 20, margin: '0 0 16px' }}>{title}</h3>
         {children}

@@ -1,5 +1,5 @@
 const border = 'rgba(255,255,255,0.08)';
-const textSec = '#8b949e';
+const textSec = '#9e98bd';
 
 export function PayChips({ value, onChange, options, color = '#818cf8' }) {
   const label = c => c % 100 === 0 ? `$${c / 100}` : `$${(c / 100).toFixed(2)}`;

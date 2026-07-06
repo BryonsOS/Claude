@@ -4,11 +4,11 @@ import { CATEGORY_META, isScheduledToday } from '../data/initialData';
 import { ProofSheet } from '../components/ProofSheet';
 
 const D = {
-  bg:      '#0d1117',
-  card:    '#161b22',
+  bg:      '#0f0a23',
+  card:    '#1a1430',
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 const fmt = c => '$' + (c / 100).toFixed(2);

@@ -60,10 +60,21 @@ export function AppProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [syncError,     setSyncError]     = useState(null);
   const [toast,         setToast]         = useState(null);
+  const [celebrate,     setCelebrate]     = useState(0);
   const [kidCode,       setKidCode]       = useState(null);
 
   const currentUser   = members.find(m => m.id === currentUserId) || null;
   const prevChoresRef = useRef(null);
+  const prevPointsRef = useRef(null);
+
+  useEffect(() => {
+    if (!currentUser) { prevPointsRef.current = null; return; }
+    const prev = prevPointsRef.current;
+    if (prev && prev.id === currentUser.id && currentUser.role === 'child' && currentUser.points > prev.points) {
+      setCelebrate(Date.now());
+    }
+    prevPointsRef.current = { id: currentUser.id, points: currentUser.points };
+  }, [currentUser?.id, currentUser?.points]);
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type, id: Date.now() });
@@ -382,6 +393,7 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
+    setCelebrate(Date.now());
     showToast(repeats
       ? `🌟 Approved! +$${(chore.points / 100).toFixed(2)} — back in the pool!`
       : `🌟 Approved! +$${(chore.points / 100).toFixed(2)} added`
@@ -511,6 +523,7 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ chores: updatedChores, members: updatedMembers, activityFeed: updatedFeed });
+    setCelebrate(Date.now());
     showToast(`🌟 Approved all ${choreIds.length} chores!`);
   }, [chores, members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
@@ -551,6 +564,7 @@ export function AppProvider({ children }) {
     setMembers(updatedMembers);
     setActivityFeed(updatedFeed);
     syncToSupabase({ rewardClaims: updatedClaims, members: updatedMembers, activityFeed: updatedFeed });
+    setCelebrate(Date.now());
     showToast('🎉 Reward paid out!');
   }, [rewardClaims, rewards, members, activityFeed, currentUserId, syncToSupabase, showToast]);
 
@@ -599,7 +613,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       familyCode, kidCode, accessLevel,
-      isLoading, isSetup, syncError, toast,
+      isLoading, isSetup, syncError, toast, celebrate,
       currentUser, currentUserId, setCurrentUserId,
       members, chores, rewards, rewardClaims, activityFeed,
       completeOnboarding, joinFamily, resetApp,

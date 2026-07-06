@@ -1,11 +1,11 @@
 import { useApp } from '../context/AppContext';
 
 const D = {
-  bg:      '#0d1117',
-  card:    '#161b22',
+  bg:      '#0f0a23',
+  card:    '#1a1430',
   border:  'rgba(255,255,255,0.08)',
   textPri: '#f0f6fc',
-  textSec: '#8b949e',
+  textSec: '#9e98bd',
 };
 
 export default function LoginScreen() {
@@ -20,7 +20,7 @@ export default function LoginScreen() {
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: 'linear-gradient(160deg, #0a0e1a 0%, #0d1117 50%, #0f0c1a 100%)',
+      background: 'linear-gradient(160deg, #0a0620 0%, #0f0a23 50%, #150d2e 100%)',
     }}>
       {/* Header */}
       <div style={{
