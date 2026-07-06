@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { CATEGORY_META, DAY_LABELS, isScheduledToday, daysLabel } from '../data/initialData';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 import { ProofSheet, PhotoPick } from '../components/ProofSheet';
+import { PayChips } from '../components/PayChips';
 
 const D = {
   bg:      '#0d1117',
@@ -39,7 +40,9 @@ export default function ChoresScreen() {
   const [deletingChore,    setDeletingChore]    = useState(null);
 
   const isParent        = currentUser.role === 'parent';
-  const pendingRequests = chores.filter(c => c.selfReported && c.status === 'completed').length;
+  const pendingRequests = chores.filter(c =>
+    c.selfReported && c.status === 'completed' && (isParent || c.assignedTo === currentUser.id)
+  ).length;
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto' }}>
@@ -309,7 +312,7 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
             <button onClick={onClick} style={{ padding: '13px 18px', borderRadius: 14, fontWeight: 900, color: '#f87171', fontSize: 14, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>Reject</button>
           </>
         )}
-        {isParent && chore.status === 'approved' && (
+        {isParent && chore.status === 'approved' && !chore.selfReported && (
           <button onClick={() => resetChore(chore.id)} style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', cursor: 'pointer' }}>↩️ Do Again</button>
         )}
         {proofMode && (
@@ -378,7 +381,7 @@ function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
             </div>
           ))}
         </div>
-        {isParent && chore.status === 'approved' && (
+        {isParent && chore.status === 'approved' && !chore.selfReported && (
           <button onClick={() => { resetChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #34d399, #059669)', border: 'none', cursor: 'pointer', marginBottom: 10 }}>↩️ Do Again</button>
         )}
         {!isParent && chore.status === 'approved' && chore.assignedTo === currentUser.id && (
@@ -458,8 +461,9 @@ function EditChoreModal({ chore, onClose }) {
           <div><label style={labelStyle}>Description</label><textarea value={form.description} onChange={e => set('description', e.target.value)} style={{ ...inputStyle, resize: 'none' }} rows={2} /></div>
           <div>
             <label style={labelStyle}>Pay Amount: <span style={{ color: '#818cf8' }}>{fmt(form.points)}</span></label>
+            <PayChips value={form.points} onChange={v => set('points', v)} options={[50, 100, 200, 500]} />
             <input type="range" value={form.points} onChange={e => set('points', Number(e.target.value))} min="50" max="10000" step="50" style={{ width: '100%', accentColor: '#4f46e5' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$25</span><span>$50</span><span>$100</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$50</span><span>$100</span></div>
           </div>
           <div><label style={labelStyle}>Due Date</label><input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle} /></div>
           <div>
@@ -527,8 +531,9 @@ function AddChoreModal({ onClose }) {
           </div>
           <div>
             <label style={labelStyle}>Pay Amount: <span style={{ color: '#818cf8' }}>{fmt(form.points)}</span></label>
+            <PayChips value={form.points} onChange={v => set('points', v)} options={[50, 100, 200, 500]} />
             <input type="range" value={form.points} onChange={e => set('points', Number(e.target.value))} min="50" max="10000" step="50" style={{ width: '100%', accentColor: '#4f46e5' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$25</span><span>$50</span><span>$100</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$50</span><span>$100</span></div>
           </div>
           <div><label style={labelStyle}>Due Date</label><input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle} /></div>
           <div>
@@ -547,7 +552,10 @@ function AddChoreModal({ onClose }) {
             </div>
           </div>
         </div>
-        <button onClick={() => { if (!form.title.trim()) return; addChore(form); onClose(); }} disabled={!form.title.trim()} style={{ width: '100%', marginTop: 20, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(99,102,241,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}>Assign Chore</button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={() => { if (!form.title.trim()) return; addChore(form); onClose(); }} disabled={!form.title.trim()} style={{ flex: 2, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(99,102,241,0.4)', opacity: form.title.trim() ? 1 : 0.4 }}>Assign Chore</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 700, color: D.textSec, fontSize: 15, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+        </div>
       </div>
     </div>
   );
@@ -586,8 +594,9 @@ function RequestChoreModal({ onClose }) {
           </div>
           <div>
             <label style={labelStyle}>Suggested Pay: <span style={{ color: currentUser.color }}>{fmt(points)}</span></label>
+            <PayChips value={points} onChange={setPoints} options={[50, 100, 200, 500]} color={currentUser.color} />
             <input type="range" value={points} onChange={e => setPoints(Number(e.target.value))} min="50" max="2000" step="50" style={{ width: '100%', accentColor: currentUser.color }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$5</span><span>$10</span><span>$20</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$10</span><span>$20</span></div>
           </div>
           <div>
             <label style={labelStyle}>Category</label>

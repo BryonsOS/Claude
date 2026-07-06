@@ -169,7 +169,7 @@ function MemberTile({ member, onSelect }) {
             color: member.color,
             border: `1px solid ${member.color}44`,
           }}>
-            ✨ {member.points} pts
+            💰 ${(member.points / 100).toFixed(2)}
           </div>
         )}
       </div>

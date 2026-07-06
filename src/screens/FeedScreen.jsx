@@ -22,8 +22,14 @@ const EVENT_STYLE = {
 
 export default function FeedScreen() {
   const { activityFeed, members } = useApp();
-  const kids    = members.filter(m => m.role === 'child').sort((a, b) => b.points - a.points);
-  const topPts  = kids[0]?.points || 1;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const kids    = members.filter(m => m.role === 'child')
+    .map(k => {
+      const wk = (k.history || []).filter(h => h.ts && new Date(h.ts).getTime() >= weekAgo);
+      return { ...k, weekEarned: wk.reduce((s, h) => s + (h.points || 0), 0), weekCount: wk.length };
+    })
+    .sort((a, b) => b.weekEarned - a.weekEarned);
+  const topPts  = kids[0]?.weekEarned || 1;
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 8px' }}>
@@ -46,7 +52,7 @@ export default function FeedScreen() {
           <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1))', borderBottom: `1px solid rgba(251,191,36,0.2)`, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>🏆</span>
-              <span style={{ color: '#fbbf24', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Leaderboard</span>
+              <span style={{ color: '#fbbf24', fontWeight: 900, fontSize: 14, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Top Earners This Week</span>
             </div>
             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {kids.map((kid, i) => (
@@ -55,11 +61,11 @@ export default function FeedScreen() {
                   <div style={{ width: 38, height: 38, borderRadius: 12, background: kid.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{kid.emoji}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                      <span style={{ color: D.textPri, fontWeight: 700, fontSize: 14 }}>{kid.name}</span>
-                      <span style={{ color: kid.color, fontWeight: 900, fontSize: 13 }}>💰 {'$' + (kid.points / 100).toFixed(2)}</span>
+                      <span style={{ color: D.textPri, fontWeight: 700, fontSize: 14 }}>{kid.name} <span style={{ color: D.textSec, fontWeight: 400, fontSize: 11 }}>· {kid.weekCount} chore{kid.weekCount === 1 ? '' : 's'}</span></span>
+                      <span style={{ color: kid.color, fontWeight: 900, fontSize: 13 }}>💰 {'$' + (kid.weekEarned / 100).toFixed(2)}</span>
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 99, height: 6 }}>
-                      <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max((kid.points / Math.max(topPts,1)) * 100, 3)}%`, transition: 'width 0.4s' }} />
+                      <div style={{ background: kid.color, height: 6, borderRadius: 99, width: `${Math.max((kid.weekEarned / Math.max(topPts,1)) * 100, 3)}%`, transition: 'width 0.4s' }} />
                     </div>
                   </div>
                 </div>

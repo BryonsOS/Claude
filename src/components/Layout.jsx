@@ -46,7 +46,6 @@ export default function Layout({ activeTab, setActiveTab, children }) {
 
   const pendingApprovals = chores.filter(c => c.status === 'completed').length;
   const pendingRewards   = rewardClaims.filter(c => c.status === 'pending').length;
-  const totalBadge       = pendingApprovals + pendingRewards;
   const isParent         = currentUser.role === 'parent';
 
   const handleRefresh = async () => {
@@ -177,8 +176,9 @@ export default function Layout({ activeTab, setActiveTab, children }) {
       >
         <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', padding: '6px 8px', gap: 4 }}>
           {NAV_ITEMS.map(item => {
-            const isActive  = activeTab === item.id;
-            const showBadge = isParent && item.id === 'chores' && totalBadge > 0;
+            const isActive   = activeTab === item.id;
+            const badgeCount = item.id === 'chores' ? pendingApprovals : item.id === 'rewards' ? pendingRewards : 0;
+            const showBadge  = isParent && badgeCount > 0;
             return (
               <button
                 key={item.id}
@@ -203,7 +203,7 @@ export default function Layout({ activeTab, setActiveTab, children }) {
                       fontSize: 10, fontWeight: 900, borderRadius: '50%',
                       width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      {totalBadge}
+                      {badgeCount}
                     </span>
                   )}
                 </div>

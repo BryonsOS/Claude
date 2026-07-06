@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
+import { PayChips } from '../components/PayChips';
 
 const D = {
   card:    '#161b22',
@@ -268,8 +269,9 @@ function EditRewardModal({ reward, onClose }) {
           <div><label style={labelStyle}>Description</label><input type="text" value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle} /></div>
           <div>
             <label style={labelStyle}>Cash Out Amount: <span style={{ color: '#a78bfa' }}>{fmt(form.pointCost)}</span></label>
+            <PayChips value={form.pointCost} onChange={v => set('pointCost', v)} options={[500, 1000, 2500, 5000]} color="#a78bfa" />
             <input type="range" value={form.pointCost} onChange={e => set('pointCost', Number(e.target.value))} min="50" max="10000" step="50" style={{ width: '100%', accentColor: '#7c3aed' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$25</span><span>$50</span><span>$100</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$50</span><span>$100</span></div>
           </div>
           <div>
             <label style={labelStyle}>Savings Bonus: <span style={{ color: '#34d399' }}>{form.bonus > 0 ? `+${fmt(form.bonus)}` : 'None'}</span></label>
@@ -326,8 +328,9 @@ function AddRewardModal({ onClose }) {
           <div><label style={labelStyle}>Description</label><input type="text" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Short description..." style={inputStyle} /></div>
           <div>
             <label style={labelStyle}>Cash Out Amount: <span style={{ color: '#a78bfa' }}>{fmt(form.pointCost)}</span></label>
+            <PayChips value={form.pointCost} onChange={v => set('pointCost', v)} options={[500, 1000, 2500, 5000]} color="#a78bfa" />
             <input type="range" value={form.pointCost} onChange={e => set('pointCost', Number(e.target.value))} min="50" max="10000" step="50" style={{ width: '100%', accentColor: '#7c3aed' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$25</span><span>$50</span><span>$100</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: D.textSec, fontSize: 11, marginTop: 2 }}><span>$0.50</span><span>$50</span><span>$100</span></div>
           </div>
           <div>
             <label style={labelStyle}>Savings Bonus: <span style={{ color: '#34d399' }}>{form.bonus > 0 ? `+${fmt(form.bonus)}` : 'None'}</span></label>
