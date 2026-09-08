@@ -93,7 +93,7 @@ function CreateFlow({ onBack, onCreate }) {
       await Promise.race([onCreate(allMembers), timeout]);
     } catch (err) {
       setError(err.message === 'timeout'
-        ? 'Connection timed out. Make sure the Firebase secrets are added in GitHub and the site was redeployed.'
+        ? 'Connection timed out. Make sure the Supabase secrets are added in GitHub and the site was redeployed.'
         : `Setup failed: ${err.message}`);
       setLoading(false);
     }

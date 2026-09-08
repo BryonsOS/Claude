@@ -116,7 +116,7 @@ function SectionLabel({ text, noMargin }) {
   );
 }
 
-function MemberCard({ member, chores, onEdit, onAdjust }) {
+function MemberCard({ member, onEdit, onAdjust }) {
   const approved = (member.history || []).length;
   return (
     <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>

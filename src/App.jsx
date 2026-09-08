@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -12,7 +12,15 @@ import InstallPrompt from './components/InstallPrompt';
 
 function AppContent() {
   const { isSetup, isLoading, currentUser } = useApp();
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab,    setActiveTab]    = useState('home');
+  const [choresFilter, setChoresFilter] = useState(null);
+
+  // Screens navigate with goTo(tab, { filter }) so Home can land a parent
+  // directly on the Review list instead of the top of the open pool.
+  const goTo = useCallback((tab, opts = {}) => {
+    setChoresFilter(tab === 'chores' ? (opts.filter || null) : null);
+    setActiveTab(tab);
+  }, []);
 
   if (isLoading) {
     return (
@@ -38,8 +46,8 @@ function AppContent() {
   }
 
   const screens = {
-    home:    <HomeScreen setActiveTab={setActiveTab} />,
-    chores:  <ChoresScreen />,
+    home:    <HomeScreen setActiveTab={goTo} />,
+    chores:  <ChoresScreen initialFilter={choresFilter} />,
     rewards: <RewardsScreen />,
     feed:    <FeedScreen />,
     family:  <FamilyScreen />,
@@ -47,7 +55,7 @@ function AppContent() {
 
   return (
     <>
-      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+      <Layout activeTab={activeTab} setActiveTab={goTo}>
         {screens[activeTab] || screens.home}
       </Layout>
       <InstallPrompt />

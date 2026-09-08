@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CATEGORY_META, DAY_LABELS, isScheduledToday, daysLabel } from '../data/initialData';
+import { CATEGORY_META, DAY_LABELS, isScheduledToday, daysLabel, nextScheduledDay } from '../data/initialData';
 import { MemberAvatar, MemberName } from '../components/MemberAvatar';
 import { ProofSheet, PhotoPick } from '../components/ProofSheet';
 import { PayChips } from '../components/PayChips';
+import ChoreDetailModal, { STATUS_MAP } from '../components/ChoreDetailModal';
+import { todayStr, isToday, formatDate, timeAgo } from '../utils/date';
 
 const D = {
   bg:      '#0f0a23',
@@ -23,26 +25,26 @@ const STATUS_TABS = [
   { id: 'requests',  label: 'Requests' },
 ];
 
-const STATUS_MAP = {
-  pending:   { label: 'To Do',        color: '#818cf8', bg: 'rgba(99,102,241,0.15)' },
-  completed: { label: 'Needs Review', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)' },
-  approved:  { label: 'Approved ✓',   color: '#34d399', bg: 'rgba(52,211,153,0.15)' },
-  rejected:  { label: 'Redo',         color: '#f87171', bg: 'rgba(248,113,113,0.15)' },
-};
-
-export default function ChoresScreen() {
+export default function ChoresScreen({ initialFilter }) {
   const { currentUser, chores } = useApp();
-  const [filter,           setFilter]           = useState('all');
+  const isParent        = currentUser.role === 'parent';
+  // Parents land on Review when something is waiting — the All tab opens with
+  // the whole open pool, which buried the chore they came here to approve.
+  const [filter,           setFilter]           = useState(() =>
+    initialFilter || (isParent && chores.some(c => c.status === 'completed') ? 'completed' : 'all')
+  );
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedChore,    setSelectedChore]    = useState(null);
   const [editingChore,     setEditingChore]     = useState(null);
   const [deletingChore,    setDeletingChore]    = useState(null);
 
-  const isParent        = currentUser.role === 'parent';
   const pendingRequests = chores.filter(c =>
     c.selfReported && c.status === 'completed' && (isParent || c.assignedTo === currentUser.id)
   ).length;
+  // Render the detail sheet from live state so a chore approved on another
+  // phone (or deleted) can't leave a stale sheet with a dead Approve button.
+  const liveSelected = selectedChore ? chores.find(c => c.id === selectedChore.id) : null;
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto' }}>
@@ -74,7 +76,7 @@ export default function ChoresScreen() {
 
       {showAddModal     && <AddChoreModal onClose={() => setShowAddModal(false)} />}
       {showRequestModal && <RequestChoreModal onClose={() => setShowRequestModal(false)} />}
-      {selectedChore    && <ChoreDetailModal chore={selectedChore} onClose={() => setSelectedChore(null)} onEdit={() => { setEditingChore(selectedChore); setSelectedChore(null); }} onDelete={() => { setDeletingChore(selectedChore); setSelectedChore(null); }} />}
+      {liveSelected     && <ChoreDetailModal chore={liveSelected} onClose={() => setSelectedChore(null)} onEdit={() => { setEditingChore(liveSelected); setSelectedChore(null); }} onDelete={() => { setDeletingChore(liveSelected); setSelectedChore(null); }} />}
       {editingChore     && <EditChoreModal chore={editingChore} onClose={() => setEditingChore(null)} />}
       {deletingChore    && <DeleteChoreConfirm chore={deletingChore} onClose={() => setDeletingChore(null)} />}
     </div>
@@ -84,6 +86,10 @@ export default function ChoresScreen() {
 function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onRequest }) {
   const { currentUser, chores, members, bulkApproveChores } = useApp();
   const isParent = currentUser.role === 'parent';
+  // Kids see off-schedule chores too, just locked — hiding them made
+  // "Pick Up Dog Poop (Thursdays)" look deleted the other six days.
+  const lockedFor     = c => !isParent && c.status === 'pending' && !isScheduledToday(c);
+  const unlockedFirst = (a, b) => Number(lockedFor(a)) - Number(lockedFor(b));
 
   if (filter === 'approved') {
     const people  = isParent ? members.filter(m => m.role === 'child') : [currentUser];
@@ -141,7 +147,7 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {ordered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />)}
+            {ordered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} locked={lockedFor(c)} />)}
           </div>
         )}
       </div>
@@ -149,17 +155,15 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
   }
 
   const openChores = chores.filter(c =>
-    !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending') &&
-    (isParent || isScheduledToday(c))
-  );
+    !c.assignedTo && c.status === 'pending' && (filter === 'all' || filter === 'pending')
+  ).sort(unlockedFirst);
 
   const filtered = chores.filter(c => {
     if (!c.assignedTo && c.status === 'pending') return false;
     if (!isParent && c.assignedTo !== currentUser.id) return false;
-    if (!isParent && c.status === 'pending' && !isScheduledToday(c)) return false;
     if (filter === 'all') return true;
     return c.status === filter;
-  });
+  }).sort(unlockedFirst);
 
   const allEmpty = filtered.length === 0 && openChores.length === 0;
 
@@ -185,7 +189,7 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
               <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{openChores.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {openChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />)}
+              {openChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} locked={lockedFor(c)} />)}
             </div>
           </div>
         )}
@@ -200,7 +204,7 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
                 <span style={{ background: D.card, border: `1px solid ${D.border}`, color: D.textSec, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{kidChores.length}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {kidChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />)}
+                {kidChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} locked={lockedFor(c)} />)}
               </div>
             </div>
           );
@@ -227,30 +231,35 @@ function ChoreList({ filter, onSelectChore, onEditChore, onDeleteChore, onReques
             <span style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>🌟 Available to Claim</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {openChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} isOpen />)}
+            {openChores.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} locked={lockedFor(c)} />)}
           </div>
         </div>
       )}
       {filtered.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {!isParent && openChores.length > 0 && <span style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>YOUR CHORES</span>}
-          {filtered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} />)}
+          {filtered.map(c => <ChoreCard key={c.id} chore={c} onClick={() => onSelectChore(c)} onEdit={() => onEditChore(c)} onDelete={() => onDeleteChore(c)} locked={lockedFor(c)} />)}
         </div>
       )}
     </div>
   );
 }
 
-function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
-  const { currentUser, completeChore, approveChore, claimOpenChore, resetChore } = useApp();
+function ChoreCard({ chore, onClick, onEdit, onDelete, locked }) {
+  const { currentUser, members, completeChore, approveChore, claimOpenChore, resetChore } = useApp();
   const [proofMode, setProofMode] = useState(null);
   const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const isParent    = currentUser.role === 'parent';
   const isMyChore   = chore.assignedTo === currentUser.id;
   const isOpenChore = !chore.assignedTo && chore.status === 'pending';
   const st          = STATUS_MAP[chore.status] || STATUS_MAP.pending;
-  const isOverdue   = chore.dueDate && chore.dueDate < new Date().toISOString().split('T')[0] && chore.status === 'pending';
+  const isOverdue   = chore.dueDate && chore.dueDate < todayStr() && chore.status === 'pending';
   const color       = currentUser.color;
+  const lockedDay   = locked ? (nextScheduledDay(chore.days) || 'later') : null;
+  // A recycled chore looked untouched right after approval, so parents
+  // thought it hadn't taken and approved again. Show today's approval.
+  const approvedToday = chore.status === 'pending' && chore.lastApproved && isToday(chore.lastApproved.at) ? chore.lastApproved : null;
+  const approvedKid   = approvedToday ? members.find(m => m.id === approvedToday.by) : null;
 
   const submitProof = (photo) => {
     if (proofMode === 'claim') claimOpenChore(chore.id, photo);
@@ -259,15 +268,27 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
   };
 
   return (
-    <div style={{ background: D.card, border: isOpenChore ? '1px solid rgba(251,191,36,0.25)' : `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: isOpenChore ? '0 2px 12px rgba(251,191,36,0.08)' : '0 2px 8px rgba(0,0,0,0.3)' }}>
-      {isOpenChore && <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' }} />}
+    <div style={{ background: D.card, border: isOpenChore ? '1px solid rgba(251,191,36,0.25)' : `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', boxShadow: isOpenChore ? '0 2px 12px rgba(251,191,36,0.08)' : '0 2px 8px rgba(0,0,0,0.3)', opacity: locked ? 0.72 : 1 }}>
+      {isOpenChore && !locked && <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' }} />}
+      {approvedToday && (
+        <div style={{ background: 'rgba(52,211,153,0.12)', borderBottom: '1px solid rgba(52,211,153,0.25)', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#34d399', fontSize: 12, fontWeight: 800, flex: 1 }}>
+            {approvedToday.by === currentUser.id
+              ? `✓ You did this today — earned ${fmt(approvedToday.amount)}!`
+              : `✓ Approved today · ${approvedKid?.name || 'Someone'} earned ${fmt(approvedToday.amount)}`}
+          </span>
+          {isParent && <span style={{ color: D.textSec, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>back in the pool</span>}
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px 10px' }}>
         <div style={{ width: 46, height: 46, borderRadius: 14, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>{cat.emoji}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: 0, lineHeight: 1.2 }}>{chore.title}</p>
-            {isOpenChore
+            {locked
+              ? <span style={{ background: 'rgba(255,255,255,0.08)', color: D.textSec, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>🔒 {lockedDay === 'tomorrow' ? 'Tomorrow' : lockedDay}</span>
+              : isOpenChore
               ? <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>OPEN</span>
               : <span style={{ background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>{st.label}</span>
             }
@@ -292,12 +313,15 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
       )}
 
       <div style={{ padding: '0 14px 14px', display: 'flex', gap: 8 }}>
-        {!isParent && isOpenChore && (
+        {!isParent && locked && (
+          <div style={{ flex: 1, padding: '12px 0', borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: `1px dashed ${D.border}`, textAlign: 'center', color: D.textSec, fontWeight: 700, fontSize: 13 }}>🔒 Available {lockedDay}</div>
+        )}
+        {!isParent && isOpenChore && !locked && (
           <button onClick={() => setProofMode('claim')} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer' }}>
             🙋 I Did It! Earn {fmt(chore.points)}
           </button>
         )}
-        {!isParent && isMyChore && chore.status === 'pending' && (
+        {!isParent && isMyChore && chore.status === 'pending' && !locked && (
           <button onClick={() => setProofMode('complete')} style={{ flex: 1, padding: '13px 0', borderRadius: 14, fontWeight: 900, color: 'white', fontSize: 14, background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 16px ${color}44`, border: 'none', cursor: 'pointer' }}>Mark Done ✓</button>
         )}
         {!isParent && isMyChore && chore.status === 'completed' && (
@@ -323,97 +347,6 @@ function ChoreCard({ chore, onClick, onEdit, onDelete, isOpen }) {
             <button onClick={onEdit}   style={{ flex: 1, padding: '11px 0', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', cursor: 'pointer' }}>✏️ Edit</button>
             <button onClick={onDelete} style={{ padding: '11px 16px', borderRadius: 14, fontWeight: 700, fontSize: 13, background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', cursor: 'pointer' }}>🗑</button>
           </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ChoreDetailModal({ chore, onClose, onEdit, onDelete }) {
-  const { currentUser, members, approveChore, rejectChore, completeChore, resetChore } = useApp();
-  const [rejectReason, setRejectReason] = useState('');
-  const [showReject,   setShowReject]   = useState(false);
-  const [showProof,    setShowProof]    = useState(false);
-  const cat         = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
-  const isParent    = currentUser.role === 'parent';
-  const st          = STATUS_MAP[chore.status] || STATUS_MAP.pending;
-  const assignedKid = members.find(m => m.id === chore.assignedTo);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ background: '#221a3d', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 520, padding: '24px 24px 40px', border: `1px solid ${D.border}`, overflowY: 'auto', maxHeight: '90vh', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
-        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 18, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, flexShrink: 0 }}>{cat.emoji}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ color: D.textPri, fontWeight: 900, fontSize: 20, margin: '0 0 4px', lineHeight: 1.2 }}>{chore.title}</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
-              {assignedKid && <span style={{ color: D.textSec, fontSize: 12 }}>{assignedKid.emoji} {assignedKid.name}</span>}
-            </div>
-          </div>
-          {isParent && (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <button onClick={onEdit}   style={{ padding: '8px 14px', borderRadius: 12, fontWeight: 700, fontSize: 13, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer' }}>✏️ Edit</button>
-              <button onClick={onDelete} style={{ padding: '8px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13, background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>🗑</button>
-            </div>
-          )}
-        </div>
-        {chore.proofPhoto && (
-          <div style={{ marginBottom: 14 }}>
-            <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>📸 PHOTO PROOF</p>
-            <img src={chore.proofPhoto} alt="proof" style={{ width: '100%', borderRadius: 16, display: 'block', border: `1px solid ${D.border}` }} />
-          </div>
-        )}
-        {chore.description && (
-          <p style={{ color: D.textSec, fontSize: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '10px 14px', marginBottom: 14 }}>{chore.description}</p>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-          {[
-            { label: 'Earns',    value: fmt(chore.points) },
-            { label: 'Due',      value: `📅 ${formatDate(chore.dueDate)}` },
-            { label: 'Days',     value: `🗓 ${daysLabel(chore.days)}` },
-            { label: 'Category', value: `${cat.emoji} ${cat.label}` },
-          ].map(t => (
-            <div key={t.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 12px' }}>
-              <p style={{ color: D.textSec, fontSize: 11, margin: '0 0 2px' }}>{t.label}</p>
-              <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: 0 }}>{t.value}</p>
-            </div>
-          ))}
-        </div>
-        {isParent && chore.status === 'approved' && !chore.selfReported && (
-          <button onClick={() => { resetChore(chore.id); onClose(); }} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #34d399, #059669)', border: 'none', cursor: 'pointer', marginBottom: 10 }}>↩️ Do Again</button>
-        )}
-        {!isParent && chore.status === 'approved' && chore.assignedTo === currentUser.id && (
-          <button onClick={() => setShowProof(true)} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>🔄 Did it again!</button>
-        )}
-        {isParent && chore.status === 'completed' && !showReject && (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { approveChore(chore.id); onClose(); }} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}>Approve ✓</button>
-            <button onClick={() => setShowReject(true)} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: '#f87171', fontSize: 16, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>Send Back</button>
-          </div>
-        )}
-        {isParent && chore.status === 'completed' && showReject && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Tell them what needs to be fixed..."
-              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 14, resize: 'none', boxSizing: 'border-box' }} rows={3} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { rejectChore(chore.id, rejectReason); onClose(); }} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', background: '#dc2626', border: 'none', cursor: 'pointer' }}>Send Back</button>
-              <button onClick={() => setShowReject(false)} style={{ flex: 1, padding: '16px 0', borderRadius: 18, fontWeight: 900, color: D.textSec, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </div>
-        )}
-        {!isParent && chore.status === 'pending' && chore.assignedTo === currentUser.id && (
-          <button onClick={() => setShowProof(true)} style={{ width: '100%', padding: '16px 0', borderRadius: 18, fontWeight: 900, color: 'white', fontSize: 16, background: `linear-gradient(135deg, ${currentUser.color}, ${currentUser.color}bb)`, boxShadow: `0 4px 16px ${currentUser.color}44`, border: 'none', cursor: 'pointer' }}>Mark as Complete ✓</button>
-        )}
-        {showProof && (
-          <ProofSheet chore={chore} color={currentUser.color} onSubmit={(photo) => { completeChore(chore.id, photo); onClose(); }} onClose={() => setShowProof(false)} />
-        )}
-        {chore.rejectionReason && (
-          <div style={{ marginTop: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '10px 14px' }}>
-            <p style={{ color: '#f87171', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>PARENT'S NOTE:</p>
-            <p style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{chore.rejectionReason}</p>
-          </div>
         )}
       </div>
     </div>
@@ -500,7 +433,7 @@ function DeleteChoreConfirm({ chore, onClose }) {
 function AddChoreModal({ onClose }) {
   const { members, addChore } = useApp();
   const kids  = members.filter(m => m.role === 'child');
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const [form, setForm] = useState({ title: '', description: '', assignedTo: kids[0]?.id || '', points: 150, dueDate: today, recurrence: 'once', category: 'cleaning', days: [0, 1, 2, 3, 4, 5, 6] });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${D.border}`, borderRadius: 14, padding: '12px 14px', color: D.textPri, fontSize: 15, fontWeight: 600, boxSizing: 'border-box', outline: 'none' };
@@ -620,24 +553,4 @@ function RequestChoreModal({ onClose }) {
       </div>
     </div>
   );
-}
-
-function timeAgo(isoStr) {
-  if (!isoStr) return '';
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '–';
-  const today    = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  if (dateStr === today)    return 'Today';
-  if (dateStr === tomorrow) return 'Tomorrow';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

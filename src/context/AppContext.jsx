@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabase';
+import { todayStr } from '../utils/date';
 
 const AppContext = createContext(null);
 const CODE_KEY   = 'chorefamily_code';
@@ -82,7 +83,7 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2500);
+    const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -98,7 +99,7 @@ export function AppProvider({ children }) {
 
     const fire = (title, body) => {
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/icon-192.png' });
+        new Notification(title, { body, icon: `${import.meta.env.BASE_URL}icon-192.png` });
       }
     };
 
@@ -168,18 +169,18 @@ export function AppProvider({ children }) {
           setIsSetup(false);
         } else {
           const s = rowToState(data);
-          const todayStr = new Date().toISOString().split('T')[0];
+          const today = todayStr();
           const needsFix = s.chores.some(c =>
             (c.status === 'approved' && !c.selfReported) ||
-            (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < todayStr)
+            (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < today)
           );
           if (needsFix) {
             s.chores = s.chores.map(c => {
               if (c.status === 'approved' && !c.selfReported) {
-                return { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr };
+                return { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: today };
               }
-              if (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < todayStr) {
-                return { ...c, dueDate: todayStr };
+              if (!c.assignedTo && c.status === 'pending' && c.dueDate && c.dueDate < today) {
+                return { ...c, dueDate: today };
               }
               return c;
             });
@@ -327,10 +328,12 @@ export function AppProvider({ children }) {
   const removeMember = useCallback((id) => {
     const updatedMembers = members.filter(m => m.id !== id);
     const updatedChores  = chores.filter(c => c.assignedTo !== id);
+    const updatedClaims  = rewardClaims.filter(c => c.claimedBy !== id);
     setMembers(updatedMembers);
     setChores(updatedChores);
-    syncToSupabase({ members: updatedMembers, chores: updatedChores });
-  }, [members, chores, syncToSupabase]);
+    setRewardClaims(updatedClaims);
+    syncToSupabase({ members: updatedMembers, chores: updatedChores, rewardClaims: updatedClaims });
+  }, [members, chores, rewardClaims, syncToSupabase]);
 
   const mkActivity = (type, extra = {}) => ({
     id: `a${Date.now()}${Math.floor(Math.random() * 100000)}`,
@@ -373,11 +376,13 @@ export function AppProvider({ children }) {
     if (!chore || chore.status !== 'completed') return;
     const repeats = !chore.selfReported;
     const now = new Date().toISOString();
-    const todayStr = now.split('T')[0];
+    const today = todayStr();
+    // lastApproved lets the recycled card show "approved today" — without it
+    // the chore reappeared looking untouched and parents re-approved it.
     const updatedChores = chores.map(c => {
       if (c.id !== choreId) return c;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: today, proofPhoto: null, lastApproved: { at: now, by: c.assignedTo, amount: c.points } }
         : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId, proofPhoto: null };
     });
     const histEntry = { id: `h${Date.now()}`, choreId, title: chore.title, points: chore.points, ts: now };
@@ -414,10 +419,10 @@ export function AppProvider({ children }) {
   }, [chores, activityFeed, currentUserId, syncToSupabase, showToast]);
 
   const resetChore = useCallback((choreId) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     const updated = chores.map(c =>
       c.id === choreId
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: today, proofPhoto: null }
         : c
     );
     setChores(updated);
@@ -487,7 +492,7 @@ export function AppProvider({ children }) {
 
   const bulkApproveChores = useCallback((choreIds) => {
     const now = new Date().toISOString();
-    const todayStr = now.split('T')[0];
+    const today = todayStr();
     let updatedMembers = [...members];
     const feedEntries = [];
     choreIds.forEach((choreId, i) => {
@@ -514,7 +519,7 @@ export function AppProvider({ children }) {
       if (!choreIds.includes(c.id) || c.status !== 'completed') return c;
       const repeats = !c.selfReported;
       return repeats
-        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: todayStr, proofPhoto: null }
+        ? { ...c, status: 'pending', assignedTo: null, completedAt: null, approvedAt: null, approvedBy: null, rejectionReason: '', dueDate: today, proofPhoto: null, lastApproved: { at: now, by: c.assignedTo, amount: c.points } }
         : { ...c, status: 'approved', approvedAt: now, approvedBy: currentUserId, proofPhoto: null };
     });
     let updatedFeed = activityFeed;

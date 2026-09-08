@@ -1,3 +1,5 @@
+import { localDateStr, daysFromNow } from '../utils/date';
+
 export const MEMBERS = [
   { id: 'p1', name: 'Mom', role: 'parent', emoji: '👩', color: '#818cf8', bgColor: '#eef2ff', points: 0 },
   { id: 'p2', name: 'Dad', role: 'parent', emoji: '👨', color: '#6366f1', bgColor: '#e0e7ff', points: 0 },
@@ -6,9 +8,8 @@ export const MEMBERS = [
   { id: 'k3', name: 'Lily', role: 'child', emoji: '🧒', color: '#f59e0b', bgColor: '#fffbeb', age: 7, points: 55 },
 ];
 
-const today = new Date().toISOString().split('T')[0];
-const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+const today = localDateStr();
+const tomorrow = daysFromNow(1);
 
 export const CHORES = [
   {
@@ -94,6 +95,20 @@ export function isScheduledToday(chore) {
   const d = chore.days;
   if (!d || d.length === 0 || d.length === 7) return true;
   return d.includes(new Date().getDay());
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Next day a scheduled chore unlocks, as a label for the locked card:
+// 'tomorrow', 'Thursday', or null when it runs every day.
+export function nextScheduledDay(days) {
+  if (!days || days.length === 0 || days.length === 7) return null;
+  const today = new Date().getDay();
+  for (let i = 1; i <= 7; i++) {
+    const d = (today + i) % 7;
+    if (days.includes(d)) return i === 1 ? 'tomorrow' : DAY_NAMES[d];
+  }
+  return null;
 }
 
 export function daysLabel(days) {

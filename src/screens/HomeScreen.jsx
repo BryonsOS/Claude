@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CATEGORY_META, isScheduledToday } from '../data/initialData';
+import { CATEGORY_META, isScheduledToday, nextScheduledDay } from '../data/initialData';
 import { ProofSheet } from '../components/ProofSheet';
+import ChoreDetailModal from '../components/ChoreDetailModal';
+import { todayStr, isToday, localDateStr } from '../utils/date';
 
 const D = {
   bg:      '#0f0a23',
@@ -12,7 +14,7 @@ const D = {
 };
 
 const fmt = c => '$' + (c / 100).toFixed(2);
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => todayStr();
 
 export default function HomeScreen({ setActiveTab }) {
   const { currentUser } = useApp();
@@ -22,12 +24,14 @@ export default function HomeScreen({ setActiveTab }) {
 }
 
 function ParentHome({ setActiveTab }) {
-  const { members, chores, rewardClaims, currentUser } = useApp();
+  const { members, chores, rewardClaims, currentUser, approveChore } = useApp();
+  const [selectedId, setSelectedId] = useState(null);
+  const selectedChore = selectedId ? chores.find(c => c.id === selectedId) : null;
   const kids           = members.filter(m => m.role === 'child');
   const pendingApprove = chores.filter(c => c.status === 'completed');
   const pendingRewards = rewardClaims.filter(c => c.status === 'pending');
   const todayChores    = chores.filter(c => c.dueDate === today());
-  const doneToday      = kids.flatMap(k => k.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
+  const doneToday      = kids.flatMap(k => k.history || []).filter(h => isToday(h.ts)).length;
   const needsAction    = pendingApprove.length + pendingRewards.length;
 
   return (
@@ -45,10 +49,15 @@ function ParentHome({ setActiveTab }) {
 
       {needsAction > 0 && (
         <section style={{ marginBottom: 20 }}>
-          <SectionLabel emoji="⚡" text="NEEDS YOUR APPROVAL" color="#f59e0b" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <SectionLabel emoji="⚡" text="NEEDS YOUR APPROVAL" color="#f59e0b" />
+            {pendingApprove.length > 0 && (
+              <button onClick={() => setActiveTab('chores', { filter: 'completed' })} style={{ color: '#f59e0b', fontSize: 12, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 10 }}>Review all →</button>
+            )}
+          </div>
           <div style={{ background: D.card, borderRadius: 20, border: '1px solid rgba(245,158,11,0.3)', overflow: 'hidden', boxShadow: '0 0 0 1px rgba(245,158,11,0.15), 0 4px 20px rgba(245,158,11,0.1)' }}>
             {pendingApprove.map((c, i) => (
-              <ApprovalRow key={c.id} chore={c} onTap={() => setActiveTab('chores')} last={i === pendingApprove.length - 1 && pendingRewards.length === 0} />
+              <ApprovalRow key={c.id} chore={c} onTap={() => setSelectedId(c.id)} onApprove={() => approveChore(c.id)} last={i === pendingApprove.length - 1 && pendingRewards.length === 0} />
             ))}
             {pendingRewards.map((cl, i) => (
               <RewardRow key={cl.id} claim={cl} onTap={() => setActiveTab('rewards')} last={i === pendingRewards.length - 1} />
@@ -65,7 +74,7 @@ function ParentHome({ setActiveTab }) {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {kids.map(kid => <KidTile key={kid.id} kid={kid} chores={chores} onTap={() => setActiveTab('chores')} />)}
+            {kids.map(kid => <KidTile key={kid.id} kid={kid} chores={chores} onTap={() => setActiveTab('chores', { filter: chores.some(c => c.assignedTo === kid.id && c.status === 'completed') ? 'completed' : 'all' })} />)}
           </div>
         )}
       </section>
@@ -108,6 +117,7 @@ function ParentHome({ setActiveTab }) {
           </div>
         </section>
       )}
+      {selectedChore && <ChoreDetailModal chore={selectedChore} onClose={() => setSelectedId(null)} />}
     </div>
   );
 }
@@ -131,7 +141,7 @@ function SectionLabel({ emoji, text, color }) {
 
 function KidTile({ kid, chores, onTap }) {
   const myChores = chores.filter(c => c.assignedTo === kid.id);
-  const done     = (kid.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
+  const done     = (kid.history || []).filter(h => isToday(h.ts)).length;
   const review   = myChores.filter(c => c.status === 'completed').length;
   const active   = myChores.filter(c => c.status === 'pending' || c.status === 'completed').length;
   const pct      = (done + active) ? Math.round((done / (done + active)) * 100) : 0;
@@ -152,19 +162,24 @@ function KidTile({ kid, chores, onTap }) {
   );
 }
 
-function ApprovalRow({ chore, onTap, last }) {
+// Approve right here; tapping the text opens the detail sheet (photo, Send Back).
+// The old row only jumped to the Chores tab, which opened at the top of the
+// open pool with the chore nowhere in sight.
+function ApprovalRow({ chore, onTap, onApprove, last }) {
   const { members } = useApp();
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.cleaning;
   const kid = members.find(m => m.id === chore.assignedTo);
   return (
-    <button onClick={onTap} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: last ? 'none' : `1px solid ${D.border}` }}>
-      <div style={{ width: 38, height: 38, borderRadius: 12, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{cat.emoji}</div>
-      <div style={{ flex: 1, textAlign: 'left' }}>
-        <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px' }}>{chore.title}{chore.proofPhoto ? ' 📸' : ''}</p>
-        <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>{kid?.name} · +{fmt(chore.points)}</p>
-      </div>
-      <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, flexShrink: 0 }}>Review</span>
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px 12px 16px', borderBottom: last ? 'none' : `1px solid ${D.border}` }}>
+      <button onClick={onTap} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+        <div style={{ width: 38, height: 38, borderRadius: 12, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{cat.emoji}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: D.textPri, fontWeight: 700, fontSize: 14, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chore.title}{chore.proofPhoto ? ' 📸' : ''}</p>
+          <p style={{ color: D.textSec, fontSize: 12, margin: 0 }}>{kid?.name} · +{fmt(chore.points)}{chore.proofPhoto ? ' · tap to see photo' : ''}</p>
+        </div>
+      </button>
+      <button onClick={onApprove} style={{ padding: '10px 14px', borderRadius: 12, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #059669, #047857)', border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(5,150,105,0.4)' }}>Approve ✓</button>
+    </div>
   );
 }
 
@@ -213,9 +228,15 @@ function KidHome({ setActiveTab }) {
   const myChores    = chores.filter(c => c.assignedTo === currentUser.id);
   const todayChores = myChores.filter(c => c.dueDate === today());
   const pending     = todayChores.filter(c => c.status === 'pending' && isScheduledToday(c));
-  const done        = (currentUser.history || []).filter(h => h.ts && h.ts.startsWith(today())).length;
+  const done        = (currentUser.history || []).filter(h => isToday(h.ts)).length;
   const waiting     = myChores.filter(c => c.status === 'completed').length;
   const openChores  = chores.filter(c => !c.assignedTo && c.status === 'pending' && isScheduledToday(c));
+  // Off-schedule chores stay visible (locked) so a Thursday-only chore
+  // doesn't look like it was deleted the rest of the week.
+  const comingUp    = [
+    ...chores.filter(c => !c.assignedTo && c.status === 'pending' && !isScheduledToday(c)),
+    ...myChores.filter(c => c.status === 'pending' && !isScheduledToday(c)),
+  ];
   const canAfford   = rewards.filter(r => r.pointCost <= currentUser.points);
   const streak      = calcStreak(currentUser.history || []);
   const color       = currentUser.color;
@@ -265,6 +286,28 @@ function KidHome({ setActiveTab }) {
             {openChores.map(chore => (
               <OpenChoreCard key={chore.id} chore={chore} onClaim={(photo) => claimOpenChore(chore.id, photo)} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {comingUp.length > 0 && (
+        <section style={{ marginBottom: 16 }}>
+          <p style={{ color: D.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>🔒 COMING UP · NOT TODAY</p>
+          <div style={{ background: D.card, border: `1px solid ${D.border}`, borderRadius: 20, overflow: 'hidden', opacity: 0.85 }}>
+            {comingUp.map((c, i) => {
+              const cat  = CATEGORY_META[c.category] || CATEGORY_META.cleaning;
+              const when = nextScheduledDay(c.days) || 'soon';
+              return (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < comingUp.length - 1 ? `1px solid ${D.border}` : 'none' }}>
+                  <span style={{ fontSize: 18 }}>{cat.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: D.textPri, fontWeight: 700, fontSize: 13, margin: '0 0 1px' }}>{c.title}</p>
+                    <p style={{ color: D.textSec, fontSize: 11, margin: 0 }}>Available {when} · +{fmt(c.points)}</p>
+                  </div>
+                  <span style={{ color: D.textSec, fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.06)', padding: '3px 9px', borderRadius: 20, flexShrink: 0 }}>🔒 {when === 'tomorrow' ? 'Tomorrow' : when.slice(0, 3)}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -350,6 +393,7 @@ function OpenChoreCard({ chore, onClaim }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ color: D.textPri, fontWeight: 900, fontSize: 15, margin: '0 0 3px', lineHeight: 1.2 }}>{chore.title}</p>
           <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20 }}>+{fmt(chore.points)}</span>
+          {chore.lastApproved && isToday(chore.lastApproved.at) && <span style={{ color: '#34d399', fontSize: 11, fontWeight: 700, marginLeft: 6 }}>✓ done today</span>}
         </div>
         <button onClick={() => setShowProof(true)} style={{ padding: '12px 16px', borderRadius: 16, fontWeight: 900, color: 'white', fontSize: 13, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.45)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>🙋 I Did It!</button>
       </div>
@@ -362,12 +406,12 @@ function OpenChoreCard({ chore, onClaim }) {
 
 function calcStreak(history) {
   if (!history.length) return 0;
-  const dates = new Set(history.map(h => h.ts && h.ts.split('T')[0]).filter(Boolean));
+  const dates = new Set(history.map(h => h.ts && localDateStr(new Date(h.ts))).filter(Boolean));
   let s = 0;
   for (let i = 0; i < 30; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    if (dates.has(d.toISOString().split('T')[0])) s++;
+    if (dates.has(localDateStr(d))) s++;
     else if (i > 0) break;
   }
   return s;
